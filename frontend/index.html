@@ -1,0 +1,3803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BeamForge — Phased Array Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:#03040c; --bg2:#08091a; --bg3:#0e1025; --panel:#131528;
+  --border:#252860; --border2:#4050a0;
+  --cyan:#00f5ff; --cyan2:#00d4ee; --purple:#c060ff; --purple2:#8844ee;
+  --green:#00ff88; --amber:#ffc107; --red:#ff3355; --orange:#ff7722;
+  --text:#eef0ff; --text2:#99a5cc; --text3:#5566aa;
+  --font-head:'Syne',sans-serif; --font-mono:'Space Mono',monospace;
+  --glow-cyan:0 0 20px rgba(0,245,255,0.35);
+  --glow-purple:0 0 20px rgba(168,85,247,0.35);
+  --glow-green:0 0 20px rgba(16,255,176,0.35);
+  --glow-amber:0 0 20px rgba(251,191,36,0.35);
+  --r:8px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font-head);overflow:hidden;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px;}
+#app{display:grid;grid-template-rows:52px 1fr;height:100vh;overflow:hidden;}
+header{display:flex;align-items:center;gap:20px;padding:0 20px;background:linear-gradient(90deg,var(--bg2) 0%,#0e1025 100%);border-bottom:1px solid var(--border);position:relative;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--font-head);font-size:17px;font-weight:800;color:var(--cyan);letter-spacing:2px;text-transform:uppercase;flex-shrink:0;}
+.logo-icon{width:28px;height:28px;background:conic-gradient(from 0deg,var(--cyan),var(--purple),var(--green),var(--cyan));border-radius:50%;animation:spin 4s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.logo-sub{color:var(--text3);font-size:10px;font-weight:400;letter-spacing:3px;margin-top:1px;}
+nav{display:flex;gap:3px;}
+.nav-btn{padding:6px 14px;border-radius:6px;border:none;cursor:pointer;font-family:var(--font-head);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all .2s;background:transparent;color:var(--text2);white-space:nowrap;}
+.nav-btn:hover{background:var(--border);color:var(--text);}
+.nav-btn.active{background:var(--purple2);color:#fff;box-shadow:var(--glow-purple);}
+.header-spacer{flex:1;}
+.snr-cluster{display:flex;align-items:center;gap:10px;padding:0 14px;border-left:1px solid var(--border);}
+.snr-label{font-size:10px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1px;}
+.snr-val{font-size:14px;font-family:var(--font-mono);color:var(--cyan);min-width:52px;font-weight:700;}
+#snr-slider{width:80px;accent-color:var(--cyan);cursor:pointer;}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green);animation:blink 2s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
+.status-label{font-size:10px;font-family:var(--font-mono);color:var(--green);}
+main{display:grid;grid-template-columns:275px 1fr 290px;overflow:hidden;height:100%;}
+.left-panel{background:var(--bg2);border-right:1px solid var(--border);overflow-y:auto;padding:14px 10px;display:flex;flex-direction:column;gap:12px;}
+.center-panel{display:flex;flex-direction:column;overflow:hidden;background:var(--bg);position:relative;}
+.center-panel::before{content:'';position:absolute;inset:0;pointer-events:none;z-index:0;background-image:linear-gradient(rgba(42,45,85,0.25) 1px,transparent 1px),linear-gradient(90deg,rgba(42,45,85,0.25) 1px,transparent 1px);background-size:40px 40px;}
+.center-panel>*{position:relative;z-index:1;}
+.right-panel{background:var(--bg2);border-left:1px solid var(--border);overflow-y:auto;padding:14px 10px;display:flex;flex-direction:column;gap:10px;}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:11px;}
+.card-title{font-size:9px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;display:flex;align-items:center;gap:6px;}
+.card-title::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--cyan);}
+.card-title.purple::before{background:var(--purple);}
+.card-title.green::before{background:var(--green);}
+.card-title.amber::before{background:var(--amber);}
+.card-title.red::before{background:var(--red);}
+.ctrl-row{display:flex;flex-direction:column;gap:4px;margin-bottom:9px;}
+.ctrl-row:last-child{margin-bottom:0;}
+.ctrl-label{display:flex;justify-content:space-between;align-items:center;}
+.ctrl-name{font-size:10px;color:var(--text2);font-family:var(--font-mono);}
+.ctrl-val{font-size:11px;color:var(--cyan);font-family:var(--font-mono);font-weight:700;}
+input[type=range]{width:100%;height:4px;border-radius:2px;appearance:none;-webkit-appearance:none;background:var(--border);cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:13px;height:13px;border-radius:50%;background:var(--cyan);cursor:pointer;box-shadow:var(--glow-cyan);}
+input[type=range].amber-thumb::-webkit-slider-thumb{background:var(--amber);box-shadow:var(--glow-amber);}
+input[type=range].purple-thumb::-webkit-slider-thumb{background:var(--purple);box-shadow:var(--glow-purple);}
+select{width:100%;padding:6px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--text);font-family:var(--font-mono);font-size:11px;cursor:pointer;}
+select:focus{outline:none;border-color:var(--cyan);}
+.canvas-tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--bg2);flex-shrink:0;}
+.ctab{padding:10px 16px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;font-family:var(--font-head);}
+.ctab:hover{color:var(--text);}
+.ctab.active{color:var(--cyan);border-bottom-color:var(--cyan);}
+.ctab.amber.active{color:var(--amber);border-bottom-color:var(--amber);}
+.canvas-area{flex:1;overflow:hidden;display:flex;flex-direction:column;padding:10px;gap:8px;}
+.canvas-row{display:flex;gap:8px;flex:1;min-height:0;}
+.canvas-box{flex:1;min-width:0;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;transition:border-color .2s;}
+.canvas-box:hover{border-color:var(--border2);}
+.canvas-box canvas{width:100%!important;height:100%!important;display:block;}
+.canvas-label{position:absolute;top:8px;left:10px;font-size:8px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text3);pointer-events:none;z-index:5;background:rgba(24,26,48,0.7);padding:2px 6px;border-radius:3px;}
+.sim-page{display:none;flex-direction:column;height:100%;overflow:hidden;}
+.sim-page.active{display:flex;}
+
+/* ── US page: 3-row layout ── */
+.us-top-row{display:flex;gap:8px;flex:1.5;min-height:0;}
+.us-bottom-row{display:flex;gap:8px;flex:1.1;min-height:0;}
+.us-phantom-box{flex:0 0 200px;position:relative;background:var(--panel);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;}
+.us-phantom-box canvas{width:100%!important;height:100%!important;display:block;cursor:crosshair;}
+
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:8px;}
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 6px;text-align:center;}
+.metric-val{font-size:14px;font-family:var(--font-mono);font-weight:700;color:var(--cyan);}
+.metric-val.amber{color:var(--amber);}
+.metric-val.green{color:var(--green);}
+    .rs-rst-btn{background:transparent;border:1px solid rgba(0,180,255,0.25);color:rgba(0,180,255,0.55);border-radius:3px;cursor:pointer;font-size:10px;padding:1px 5px;line-height:1.4;transition:all .15s;flex-shrink:0;}
+    .rs-rst-btn:hover{background:rgba(0,180,255,0.15);color:#00d4ff;border-color:#00d4ff;}
+.metric-name{font-size:8px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px;}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:9px;font-family:var(--font-mono);font-weight:700;letter-spacing:0.5px;}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor;}
+.badge.connected{background:rgba(16,255,176,0.12);color:var(--green);border:1px solid rgba(16,255,176,0.3);}
+.badge.disconnected{background:rgba(255,77,109,0.12);color:var(--red);border:1px solid rgba(255,77,109,0.3);}
+.badge.weak{background:rgba(251,191,36,0.12);color:var(--amber);border:1px solid rgba(251,191,36,0.3);}
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-family:var(--font-head);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all .2s;}
+.btn-primary{background:var(--purple2);color:#fff;}
+.btn-primary:hover{background:var(--purple);box-shadow:var(--glow-purple);}
+.btn-cyan{background:rgba(0,245,255,0.1);color:var(--cyan);border:1px solid var(--border2);}
+.btn-cyan:hover{background:rgba(0,245,255,0.2);box-shadow:var(--glow-cyan);}
+.btn-amber{background:rgba(251,191,36,0.1);color:var(--amber);border:1px solid rgba(251,191,36,0.3);}
+.btn-danger{background:rgba(255,77,109,0.1);color:var(--red);border:1px solid rgba(255,77,109,0.3);}
+.btn-sm{padding:4px 10px;font-size:9px;}
+.btn-row{display:flex;gap:6px;flex-wrap:wrap;}
+.info-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:10px;}
+.info-row:last-child{border-bottom:none;}
+.info-key{color:var(--text3);font-family:var(--font-mono);}
+.info-val{color:var(--text);font-family:var(--font-mono);font-weight:700;}
+.entity-list{display:flex;flex-direction:column;gap:5px;}
+.entity-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px;display:flex;justify-content:space-between;align-items:center;gap:6px;}
+.entity-name{font-size:10px;font-family:var(--font-mono);color:var(--text);}
+.entity-info{font-size:9px;color:var(--text3);margin-top:2px;}
+.pulse-dot{width:7px;height:7px;border-radius:50%;display:inline-block;background:currentColor;position:relative;flex-shrink:0;}
+.pulse-dot::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1px solid currentColor;animation:pulse-ring 1.5s ease-out infinite;}
+@keyframes pulse-ring{0%{opacity:0.8;transform:scale(1)}100%{opacity:0;transform:scale(2.2)}}
+.body-item{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:8px;margin-bottom:5px;}
+.body-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.num-input{width:100%;padding:5px 8px;background:var(--bg3);border:1px solid var(--border);border-radius:6px;color:var(--cyan);font-family:var(--font-mono);font-size:11px;text-align:center;}
+.num-input:focus{outline:none;border-color:var(--cyan);}
+.loading{display:none;position:absolute;inset:0;background:rgba(5,6,15,0.7);align-items:center;justify-content:center;border-radius:var(--r);z-index:10;}
+.loading.show{display:flex;}
+.spinner{width:22px;height:22px;border:2px solid var(--border);border-top-color:var(--cyan);border-radius:50%;animation:spin .7s linear infinite;}
+#toast{position:fixed;bottom:20px;right:20px;z-index:1000;background:var(--panel);border:1px solid var(--border2);border-radius:var(--r);padding:10px 16px;font-size:11px;font-family:var(--font-mono);transform:translateX(130%);transition:transform .3s cubic-bezier(.34,1.56,.64,1);color:var(--cyan);max-width:280px;}
+#toast.show{transform:translateX(0);}
+#phantom-tooltip{position:fixed;background:var(--panel);border:1px solid var(--border2);border-radius:6px;padding:8px 10px;font-size:9px;font-family:var(--font-mono);color:var(--text);pointer-events:none;display:none;z-index:200;max-width:190px;line-height:1.7;box-shadow:0 4px 20px rgba(0,0,0,0.5);}
+.right-section{border-bottom:1px solid var(--border);padding-bottom:10px;margin-bottom:2px;}
+.section-note{font-size:9px;color:var(--text3);font-family:var(--font-mono);margin-top:4px;line-height:1.5;}
+#fiveg-canvas{width:100%;height:100%;cursor:crosshair;}
+#radar-ppi{width:100%;height:100%;}
+.doppler-metrics{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px;}
+.doppler-metric{background:var(--bg3);border:1px solid rgba(255,140,66,0.3);border-radius:5px;padding:5px 8px;text-align:center;flex:1;}
+.doppler-metric-val{font-size:13px;color:var(--orange);font-family:var(--font-mono);font-weight:700;}
+.doppler-metric-name{font-size:8px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;}
+#us-shape-editor{transition:all .2s;}
+.divider{height:1px;background:var(--border);margin:4px 0;}
+.mode-row{display:flex;gap:4px;margin-bottom:8px;}
+.mode-btn{flex:1;padding:5px;border-radius:5px;border:1px solid var(--border);background:none;color:var(--text2);cursor:pointer;font-family:var(--font-mono);font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;transition:all .2s;text-align:center;}
+.mode-btn.active{background:var(--cyan);color:var(--bg);border-color:var(--cyan);}
+@media(max-width:1200px){main{grid-template-columns:250px 1fr 250px;}}
+main.us-mode{grid-template-columns:0px 1fr 290px;}
+.left-panel{transition:none;}
+.left-panel.hidden-panel{width:0;padding:0;overflow:hidden;border:none;min-width:0;}
+.us-waveform-row{display:flex;gap:8px;flex:0 0 120px;min-height:0;}
+
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="logo">
+    <div class="logo-icon"></div>
+    <div>BeamForge<div class="logo-sub">Phased Array Simulator v2</div></div>
+  </div>
+  <nav>
+    <button class="nav-btn active" onclick="switchApp('core')"  id="tab-core">⬡ Core BF</button>
+    <button class="nav-btn"        onclick="switchApp('fiveg')" id="tab-fiveg">📡 5G</button>
+    <button class="nav-btn"        onclick="switchApp('us')"    id="tab-us">🔊 Ultrasound</button>
+    <button class="nav-btn"        onclick="switchApp('radar')" id="tab-radar">🎯 Radar</button>
+  </nav>
+  <div class="header-spacer"></div>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <div class="status-dot" id="api-dot" style="background:var(--red);box-shadow:0 0 6px var(--red)"></div>
+    <span class="status-label" id="api-label" style="color:var(--red)">OFFLINE</span>
+  </div>
+  <div class="snr-cluster">
+    <span class="snr-label">SNR</span>
+    <span class="snr-val" id="snr-display">30 dB</span>
+    <input type="range" id="snr-slider" min="0" max="1000" value="30" oninput="onSNRChange(this.value)"/>
+  </div>
+</header>
+
+<main>
+
+<!-- LEFT PANEL -->
+<div class="left-panel">
+  <div class="card">
+    <div class="card-title">Array Configuration</div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Elements (N)</span><span class="ctrl-val" id="val-n">8</span></div>
+      <input type="range" id="ctrl-n" min="2" max="64" value="8" step="2" oninput="updateParam('num_elements',+this.value,'val-n',v=>v)"/>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Spacing (λ)</span><span class="ctrl-val" id="val-d">0.50</span></div>
+      <input type="range" id="ctrl-d" min="0.1" max="2.0" value="0.5" step="0.05" oninput="updateParam('element_spacing',+this.value,'val-d',v=>v.toFixed(2))"/>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Frequency</span><span class="ctrl-val" id="val-f">2.40 GHz</span></div>
+      <input type="range" id="ctrl-f" min="0.1" max="10" value="2.4" step="0.1" oninput="updateFreq(+this.value)"/>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Steer Angle</span><span class="ctrl-val" id="val-angle">0°</span></div>
+      <input type="range" id="ctrl-angle" min="-90" max="90" value="0" step="1" class="amber-thumb" oninput="updateParam('steering_angle_deg',+this.value,'val-angle',v=>v+'°')"/>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Amplitude</span><span class="ctrl-val" id="val-amp">1.00</span></div>
+      <input type="range" id="ctrl-amp" min="0.1" max="5" value="1" step="0.1" oninput="updateParam('amplitude',+this.value,'val-amp',v=>v.toFixed(2))"/>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Pulse Width</span><span class="ctrl-val" id="val-pw">1.0 µs</span></div>
+      <input type="range" id="ctrl-pw" min="0.1" max="10" value="1" step="0.1" oninput="updateParam('pulse_width',+this.value*1e-6,'val-pw',v=>(v*1e6).toFixed(1)+' µs')"/>
+    </div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Sampling Rate</span><span class="ctrl-val" id="val-sr">10 GHz</span></div>
+      <input type="range" id="ctrl-sr" min="1" max="100" value="10" step="1" oninput="updateParam('sampling_rate',+this.value*1e9,'val-sr',v=>(v/1e9).toFixed(0)+' GHz')"/>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title purple">Apodization / Windowing</div>
+    <div class="ctrl-row">
+      <div class="ctrl-label"><span class="ctrl-name">Window Type</span><span class="ctrl-val" id="val-sidelobe-red" style="font-size:9px;color:var(--purple)">0 dB</span></div>
+      <select id="ctrl-window" onchange="updateWindow(this.value)">
+        <option value="rectangular">Rectangular (0 dB)</option>
+        <option value="hanning">Hanning (−31.5 dB)</option>
+        <option value="hamming">Hamming (−42.7 dB)</option>
+        <option value="blackman">Blackman (−58.1 dB)</option>
+        <option value="chebyshev">Chebyshev (−50 dB)</option>
+        <option value="taylor">Taylor (−35 dB)</option>
+      </select>
+    </div>
+    <div class="section-note">Side-lobe reduction via element amplitude weighting</div>
+  </div>
+  <div class="card">
+    <div class="card-title green">Beam Metrics</div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-val" id="m-mainlobe">0°</div><div class="metric-name">Main Lobe</div></div>
+      <div class="metric"><div class="metric-val" id="m-beamwidth">—</div><div class="metric-name">3dB BW</div></div>
+      <div class="metric"><div class="metric-val" id="m-sidelobe">—</div><div class="metric-name">Side Lobe</div></div>
+      <div class="metric"><div class="metric-val" id="m-snr">30</div><div class="metric-name">SNR (dB)</div></div>
+    </div>
+  </div>
+  <div style="margin-top:auto;display:flex;gap:6px">
+    <button class="btn btn-primary" style="flex:1" onclick="refreshAll()">↻ Refresh</button>
+    <button class="btn btn-cyan btn-sm" onclick="checkConnection()">Ping</button>
+  </div>
+</div>
+
+<!-- CENTER PANEL -->
+<div class="center-panel">
+
+  <!-- CORE page -->
+  <div class="sim-page active" id="page-core">
+    <div class="canvas-tabs">
+      <button class="ctab active" onclick="switchCoreTab('interference')" id="ctab-interference">Interference Map</button>
+      <button class="ctab" onclick="switchCoreTab('profile')" id="ctab-profile">Beam Profile (Polar)</button>
+      <button class="ctab" onclick="switchCoreTab('weights')" id="ctab-weights">Array Weights</button>
+    </div>
+    <div class="canvas-area">
+      <div class="canvas-row">
+        <!-- INTERFERENCE TAB: heatmap left + polar right -->
+        <div id="box-interference" style="display:flex;flex:1;gap:8px;min-width:0;">
+          <div class="canvas-box" style="flex:1.4;position:relative;">
+            <div class="canvas-label">2D INTERFERENCE FIELD — ±<span id="imap-extent-label">15</span>λ EXTENT</div>
+            <canvas id="canvas-imap"></canvas>
+            <div class="loading" id="loading-imap"><div class="spinner"></div></div>
+          </div>
+          <div class="canvas-box" style="flex:1;position:relative;">
+            <div class="canvas-label">BEAM PROFILE (POLAR)</div>
+            <canvas id="canvas-polar"></canvas>
+          </div>
+        </div>
+        <!-- PROFILE TAB: Cartesian dB view -->
+        <div class="canvas-box" id="box-profile" style="display:none"><div class="canvas-label">NORMALIZED BEAM PROFILE (dB)</div><canvas id="canvas-profile"></canvas></div>
+        <!-- WEIGHTS TAB -->
+        <div class="canvas-box" id="box-weights" style="display:none"><div class="canvas-label">COMPLEX ELEMENT WEIGHTS</div><canvas id="canvas-weights"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5G page -->
+  <div class="sim-page" id="page-fiveg">
+    <div class="canvas-tabs">
+      <button class="ctab active" onclick="switch5GTab('map')" id="ftab-map">Network Map</button>
+      <button class="ctab" onclick="switch5GTab('beams')" id="ftab-beams">Beam Profiles</button>
+      <button class="ctab" onclick="switch5GTab('coverage')" id="ftab-coverage">Coverage Map</button>
+    </div>
+    <div class="canvas-area">
+      <div class="canvas-row">
+        <div class="canvas-box" id="box-fiveg-map"><div class="canvas-label">5G NETWORK TOPOLOGY — WASD: UE-0 | ARROWS: UE-1</div><canvas id="fiveg-canvas"></canvas></div>
+        <div class="canvas-box" id="box-fiveg-beams" style="display:none"><div class="canvas-label">BEAM PROFILES PER ACTIVE TOWER-USER PAIR</div><canvas id="canvas-fiveg-beams"></canvas></div>
+        <div class="canvas-box" id="box-fiveg-coverage" style="display:none"><div class="canvas-label">SIGNAL COVERAGE HEATMAP (dBm)</div><canvas id="canvas-fiveg-coverage"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ ULTRASOUND page — ALL 3 MODES VISIBLE SIMULTANEOUSLY ═══ -->
+  <div class="sim-page" id="page-us">
+    <div class="canvas-area" style="padding:8px;gap:6px;">
+
+      <!-- TOP ROW: Phantom + A-mode -->
+      <div class="us-top-row">
+        <!-- Phantom canvas -->
+        <div class="us-phantom-box" id="us-phantom-box">
+          <div class="canvas-label">PHANTOM — DRAG/ARROWS/SCROLL</div>
+          <canvas id="us-phantom"></canvas>
+        </div>
+        <!-- A-mode chart -->
+        <div class="canvas-box" style="flex:1">
+          <div class="canvas-label">A-MODE — RF ECHO & ENVELOPE (LIVE)</div>
+          <canvas id="canvas-amode"></canvas>
+        </div>
+      </div>
+
+      <!-- WAVEFORM ROW: Element Waveforms -->
+      <div class="us-waveform-row">
+        <div class="canvas-box" style="flex:1;position:relative">
+          <div class="canvas-label">ARRAY ELEMENT WAVEFORMS — PHASE SHIFTS (LIVE)</div>
+          <canvas id="canvas-us-waveform"></canvas>
+        </div>
+      </div>
+
+      <!-- BOTTOM ROW: B-mode + Doppler -->
+      <div class="us-bottom-row">
+        <div class="canvas-box" style="flex:1;position:relative">
+          <div class="canvas-label">B-MODE SONOGRAM — LIVE (MOVE PROBE)</div>
+          <canvas id="canvas-bmode"></canvas>
+          <div class="loading" id="loading-bmode"><div class="spinner"></div></div>
+          <button class="btn btn-primary btn-sm" style="position:absolute;bottom:8px;right:8px;z-index:10;opacity:0.85" onclick="runBmodeFull()">▶ Full Sweep</button>
+        </div>
+        <div class="canvas-box" style="flex:1">
+          <div class="canvas-label">DOPPLER POWER SPECTRUM (LIVE)</div>
+          <canvas id="canvas-doppler"></canvas>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Radar page — self-contained simulator (no backend required) -->
+  <div class="sim-page" id="page-radar">
+    <div class="canvas-area" style="padding:8px;gap:6px;">
+      <!-- Top row: PPI scope (left, tall) + Status panel (right) -->
+      <div class="canvas-row" style="flex:1.6;min-height:0;">
+        <div class="canvas-box" style="flex:1.2;">
+          <div class="canvas-label">2D RADAR SCOPE — DRAG TARGETS TO MOVE</div>
+          <canvas id="radar-ppi-new" style="cursor:default;"></canvas>
+        </div>
+        <!-- Live status readout -->
+        <div class="canvas-box" style="flex:0 0 220px;display:flex;flex-direction:column;padding:10px;gap:8px;overflow-y:auto;">
+          <div style="font-size:9px;font-weight:700;letter-spacing:2px;color:var(--text3);text-transform:uppercase;margin-bottom:2px;">⬡ LIVE STATUS</div>
+          <div id="rs-phase-badge" style="background:rgba(0,180,255,0.10);border:1px solid rgba(0,180,255,0.4);border-radius:5px;padding:6px 10px;font-family:var(--font-mono);font-size:11px;color:#00d4ff;text-align:center;font-weight:700;">SCANNING</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1px;margin-top:2px;">BEAM ANGLE</div>
+          <div id="rs-angle" style="font-size:18px;font-family:var(--font-mono);color:#00d4ff;font-weight:700;">0.0°</div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1px;margin-top:2px;">BEAM WIDTH (eff)</div>
+          <div id="rs-bwidth" style="font-size:14px;font-family:var(--font-mono);color:#00d4ff;">20°</div>
+          <div style="height:1px;background:var(--border);margin:2px 0;"></div>
+          <div style="font-size:9px;color:var(--text3);font-family:var(--font-mono);letter-spacing:1px;">ECHOES IN BEAM</div>
+          <div id="rs-echoes" style="font-size:12px;font-family:var(--font-mono);color:var(--amber);">—</div>
+          <div style="height:1px;background:var(--border);margin:2px 0;"></div>
+          <!-- Physics readouts -->
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px">
+              <div style="font-size:9px;color:var(--text3);font-family:var(--font-mono)">EFF SNR</div>
+              <div id="rs-eff-snr" style="font-size:11px;color:#00d4ff;font-family:var(--font-mono);font-weight:700;">—</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px">
+              <div style="font-size:9px;color:var(--text3);font-family:var(--font-mono)">RANGE RES</div>
+              <div id="rs-range-res" style="font-size:11px;color:var(--purple);font-family:var(--font-mono);font-weight:700;">—</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:4px;padding:5px;grid-column:1/-1">
+              <div style="font-size:9px;color:var(--text3);font-family:var(--font-mono)">PRF UNAMBIGUOUS RANGE</div>
+              <div id="rs-prf-max" style="font-size:11px;color:var(--amber);font-family:var(--font-mono);font-weight:700;">—</div>
+            </div>
+          </div>
+          <div style="height:1px;background:var(--border);margin:2px 0;"></div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;">Confirmed Targets</div>
+          <div id="rs-confirmed" style="font-size:9px;font-family:var(--font-mono);color:var(--text2);line-height:1.8;">—</div>
+          <div style="height:1px;background:var(--border);margin:2px 0;"></div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--text3);text-transform:uppercase;">Beam Metrics</div>
+          <div id="rs-metrics" style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:2px;">
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px;text-align:center;">
+              <div class="metric-val amber" id="rs-hpbw">—</div><div class="metric-name">HPBW</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px;text-align:center;">
+              <div class="metric-val" id="rs-sll">—</div><div class="metric-name">SLL dB</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px;text-align:center;">
+              <div class="metric-val green" id="rs-eirp">—</div><div class="metric-name">EIRP dB</div>
+            </div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:5px;padding:5px;text-align:center;">
+              <div class="metric-val" id="rs-dir">—</div><div class="metric-name">Directiv.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- Bottom row: Signal history graph -->
+      <div class="canvas-row" style="flex:1;min-height:0;">
+        <div class="canvas-box" style="flex:1;">
+          <div class="canvas-label">LIVE SIGNAL POWER — 8s WINDOW</div>
+          <canvas id="radar-signal-history"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right-panel">
+
+  <!-- CORE right -->
+  <div id="rp-core">
+    <div class="card"><div class="card-title">Array Geometry</div><canvas id="canvas-array-elem" height="55" style="width:100%;display:block"></canvas></div>
+    <div class="card" style="margin-top:8px">
+      <div class="card-title amber">Display Settings</div>
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Grid Resolution</span><span class="ctrl-val" id="val-grid">80</span></div>
+        <input type="range" min="40" max="160" value="80" step="10" oninput="gridSize=+this.value;document.getElementById('val-grid').textContent=this.value;refreshCore()"/>
+      </div>
+    </div>
+    <div class="card" style="margin-top:8px">
+      <div class="card-title green">Beamforming Guide</div>
+      <div class="section-note">
+        • <b style="color:var(--cyan)">N↑</b>: HPBW ∝ 1/N, sharper beam, more sidelobes<br>
+        • <b style="color:var(--amber)">Spacing >0.5λ</b>: grating lobes appear<br>
+        • <b style="color:var(--cyan)">Freq↑</b>: λ↓ → denser near-field fringes<br>
+        • <b style="color:var(--amber)">Steer↑</b>: HPBW broadens as 1/cos(θ)<br>
+        • <b style="color:var(--purple)">Amp↑</b>: brighter field, SNR up<br>
+        • <b style="color:var(--purple)">Apodization</b>: trades HPBW for lower SLL<br>
+        • <b style="color:var(--green)">SNR↓</b>: noise floor rises, SLL masked
+      </div>
+    </div>
+  </div>
+
+  <!-- 5G right -->
+  <div id="rp-fiveg" style="display:none">
+    <!-- Tower beamforming params (live-updated) -->
+    <div class="card right-section">
+      <div class="card-title">Base Stations — Live BF Params</div>
+      <div id="tower-list">
+        <div class="section-note">Loading...</div>
+      </div>
+    </div>
+    <!-- User Equipment status -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title purple">User Equipment (UE)</div>
+      <div id="user-list">
+        <div class="section-note">Loading...</div>
+      </div>
+      <div class="section-note" style="margin-top:6px;color:var(--cyan)">⌨ WASD → UE-0 &nbsp;|&nbsp; ↑↓←→ → UE-1</div>
+    </div>
+    <!-- Connectivity legend -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title amber">Connectivity</div>
+      <div id="fiveg-conn-table">
+        <div class="section-note">No data</div>
+      </div>
+    </div>
+    <div class="card" style="margin-top:8px">
+      <div class="card-title green">Actions</div>
+      <div class="btn-row">
+        <button class="btn btn-primary btn-sm" onclick="fivegReset()">↺ Reset</button>
+        <button class="btn btn-cyan btn-sm" onclick="load5GState()">↻ Refresh</button>
+      </div>
+      <div class="section-note" style="margin-top:6px">Auto-refresh every 800ms while 5G tab active</div>
+    </div>
+  </div>
+
+  <!-- Ultrasound right -->
+  <div id="rp-us" style="display:none">
+
+    <!-- ── US Parameters (10 params — satisfies ≥7 requirement) ── -->
+    <div class="card right-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <div class="card-title" style="margin-bottom:0">US Parameters <span style="font-size:8px;color:var(--green);margin-left:4px">● 10 params</span></div>
+        <button class="btn btn-sm" style="font-size:9px;padding:2px 8px;border-color:var(--cyan);color:var(--cyan)" onclick="resetUSParams()">↺ Reset</button>
+      </div>
+
+      <!-- 1. Frequency -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Frequency</span><span class="ctrl-val" id="usp-freq-val">5.0 MHz</span></div>
+        <input type="range" id="usp-freq" min="1" max="20" value="5" step="0.5"
+               oninput="updateUSParam('frequency_hz',+this.value*1e6,'usp-freq-val',v=>(v/1e6).toFixed(1)+' MHz')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">λ=c/f · ↑ sharper spikes, less depth &nbsp;|&nbsp; ↓ deeper, blurrier</div>
+
+      <!-- 2. Pulse Width -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Pulse Width</span><span class="ctrl-val" id="usp-pw-val">0.5 µs</span></div>
+        <input type="range" id="usp-pw" min="0.05" max="2" value="0.5" step="0.05"
+               oninput="updateUSParam('pulse_width_us',+this.value,'usp-pw-val',v=>v.toFixed(2)+' µs')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">res=c·τ/2 · ↑ spikes merge &nbsp;|&nbsp; ↓ sharper boundaries</div>
+
+      <!-- 3. Elements N -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Elements (N)</span><span class="ctrl-val" id="usp-n-val">64</span></div>
+        <input type="range" id="usp-n" min="4" max="128" value="64" step="4"
+               oninput="updateUSParam('num_elements',+this.value,'usp-n-val',v=>v)"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">aperture=N·d · ↑ narrower beam, better lateral res</div>
+
+      <!-- 4. Amplitude -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Amplitude</span><span class="ctrl-val" id="usp-amp-val">1.0 V</span></div>
+        <input type="range" id="usp-amp" min="0.1" max="5" value="1" step="0.1"
+               oninput="updateUSParam('amplitude',+this.value,'usp-amp-val',v=>v.toFixed(1)+' V')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">P∝A² · ↑ brighter echoes, deeper range &nbsp;|&nbsp; ↓ weak signal</div>
+
+      <!-- 5. Element Spacing -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Spacing (d)</span><span class="ctrl-val" id="usp-sp-val">0.50 λ</span></div>
+        <input type="range" id="usp-sp" min="0.2" max="1.5" value="0.5" step="0.05"
+               oninput="updateUSSpacing(+this.value)"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">d≤λ/2 required · ↑ &gt;0.5λ → grating lobes (ghost beams)</div>
+
+      <!-- 6. Sampling Rate -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Sampling Rate</span><span class="ctrl-val" id="usp-fs-val">40 MHz</span></div>
+        <input type="range" id="usp-fs" min="10" max="200" value="40" step="5"
+               oninput="updateUSParam('sampling_rate_mhz',+this.value,'usp-fs-val',v=>v+' MHz')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">fs≥2f (Nyquist) · ↑ finer time res &nbsp;|&nbsp; ↓ aliasing in Doppler</div>
+
+      <!-- 7. SNR -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">US SNR</span><span class="ctrl-val" id="usp-snr-val">30 dB</span></div>
+        <input type="range" id="usp-snr" min="0" max="1000" value="30"
+               oninput="updateUSSnr(+this.value)"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">↑ clean echoes &nbsp;|&nbsp; ↓ noisy baseline, smeared Doppler</div>
+
+      <!-- 8. TGC -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">TGC</span><span class="ctrl-val" id="usp-tgc-val">2.00 dB/cm</span></div>
+        <input type="range" id="usp-tgc" min="0" max="10" value="2" step="0.25"
+               oninput="updateUSParam('tgc_db_cm',+this.value,'usp-tgc-val',v=>v.toFixed(2)+' dB/cm')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">gain(z)=TGC·z · ↑ deep echoes brighter &nbsp;|&nbsp; 0 = deep signal fades</div>
+
+      <!-- 9. Focal Depth -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Focal Depth</span><span class="ctrl-val" id="usp-fd-val">5.0 cm</span></div>
+        <input type="range" id="usp-fd" min="1" max="15" value="5" step="0.5"
+               oninput="updateUSParam('focal_depth_cm',+this.value,'usp-fd-val',v=>v.toFixed(1)+' cm')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 6px;color:#4a5280;font-size:8px">lat_res=λF/D · ↑ focus deeper, near-field blurs</div>
+
+      <!-- 10. Sound Speed -->
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Sound Speed</span><span class="ctrl-val" id="usp-c-val">1540 m/s</span></div>
+        <input type="range" id="usp-c" min="1400" max="1700" value="1540" step="10"
+               oninput="updateUSParam('sound_speed_ms',+this.value,'usp-c-val',v=>v+' m/s')"/>
+      </div>
+      <div class="section-note" style="margin:-5px 0 0;color:#4a5280;font-size:8px">z=c·t/2 · ↑ structures appear deeper &nbsp;|&nbsp; ↓ appear shallower</div>
+    </div>
+
+    <!-- ── Probe Control ── -->
+    <div class="card right-section">
+      <div class="card-title amber">Probe Control</div>
+      <div class="section-note" style="margin-bottom:6px;color:var(--amber)">
+        🖱 Drag phantom to move probe<br>
+        ⌨ <b>←→</b> position &nbsp;|&nbsp; <b>A/D</b> beam angle<br>
+        🖱 Scroll wheel on phantom = fine position
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-label">
+          <span class="ctrl-name">Position X</span>
+          <span class="ctrl-val" id="us-probe-x">0.0 cm</span>
+        </div>
+        <input type="range" id="us-probe-slider" min="-95" max="95" value="0" class="amber-thumb"
+               oninput="setProbeAbsolute(+this.value/10, null, null)"/>
+      </div>
+      <div class="ctrl-row">
+        <div class="ctrl-label">
+          <span class="ctrl-name">Beam Angle</span>
+          <span class="ctrl-val" id="us-beam-angle">0°</span>
+        </div>
+        <input type="range" id="us-beam-slider" min="-45" max="45" value="0" class="amber-thumb"
+               oninput="setProbeAbsolute(null, +this.value)"/>
+      </div>
+      <div class="info-row"><span class="info-key">Frequency</span><span class="info-val" id="us-freq-disp">5.0 MHz</span></div>
+      <div class="info-row"><span class="info-key">Sound Speed</span><span class="info-val" id="us-c-disp">1540 m/s</span></div>
+    </div>
+
+    <!-- ── US Mode Guide ── -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title green">Mode Guide</div>
+      <div class="section-note">
+        <b style="color:var(--amber)">A-mode:</b> Echo amplitude vs depth. Peaks = impedance boundaries. Higher frequency = sharper spikes but less depth. Attenuation weakens echoes with depth; TGC compensates.<br><br>
+        <b style="color:var(--cyan)">B-mode:</b> 2D sonogram built from many A-lines. Move probe or click "Full Sweep". Lateral blur = focal depth effect. Brighter = stronger echo.<br><br>
+        <b style="color:#ff7722">Doppler — KEY RULE:</b><br>
+        Δf = 2·f₀·v·<b>cos(θ)</b>/c<br>
+        θ = beam direction vs flow direction<br>
+        <b style="color:#ff3355">θ=90° always → Δf=0</b> (⊥ = no shift)<br>
+        <b style="color:#00ff88">θ=0° → max shift</b> (∥ = full signal)<br>
+        <b>+Δf</b> = flow toward probe (red on chart)<br>
+        <b>-Δf</b> = flow away from probe (blue)<br>
+        Use <b>A/D</b> to tilt beam, watch θ change
+      </div>
+    </div>
+
+    <!-- ── Blood Vessels ── -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title red">Blood Vessels</div>
+
+      <!-- Vessel list (dynamic) -->
+      <div id="vessel-list" style="margin-bottom:8px"></div>
+
+      <!-- Active vessel controls -->
+      <div id="vessel-controls" style="display:none">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span class="ctrl-name" id="vessel-ctrl-title" style="color:var(--red);font-weight:700">Vessel 0</span>
+          <button class="btn btn-danger btn-sm" id="vessel-delete-btn" onclick="deleteActiveVessel()">✕ Remove</button>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="ctrl-name">Blood Velocity</span>
+            <span class="ctrl-val" id="us-vel">0.40 m/s</span>
+          </div>
+          <input type="range" id="vessel-vel-slider" min="1" max="300" value="40" class="purple-thumb"
+                 oninput="updateActiveVessel('velocity',+this.value/100,'us-vel',v=>v.toFixed(2)+' m/s')"/>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="ctrl-name">Flow Direction</span>
+            <span class="ctrl-val" id="us-dir">20°</span>
+          </div>
+          <input type="range" id="vessel-dir-slider" min="0" max="360" value="20" class="purple-thumb"
+                 oninput="updateActiveVessel('direction',+this.value,'us-dir',v=>v+'°')"/>
+        </div>
+        <div class="ctrl-row">
+          <div class="ctrl-label">
+            <span class="ctrl-name">Vessel Radius</span>
+            <span class="ctrl-val" id="us-radius">0.30 cm</span>
+          </div>
+          <input type="range" id="vessel-radius-slider" min="5" max="200" value="30" class="purple-thumb"
+                 oninput="updateActiveVessel('radius_cm',+this.value/100,'us-radius',v=>v.toFixed(2)+' cm')"/>
+        </div>
+        <div id="doppler-live-metrics" class="doppler-metrics" style="margin-top:6px">
+          <div class="doppler-metric"><div class="doppler-metric-val" id="d-shift">— Hz</div><div class="doppler-metric-name">Δf Shift</div></div>
+          <div class="doppler-metric"><div class="doppler-metric-val" id="d-vel">— m/s</div><div class="doppler-metric-name">Est. Vel.</div></div>
+          <div class="doppler-metric"><div class="doppler-metric-val" id="d-theta" style="font-size:11px">—°</div><div class="doppler-metric-name">θ (Doppler Angle)</div></div>
+          <div class="doppler-metric"><div class="doppler-metric-val" id="d-cos" style="font-size:10px">—</div><div class="doppler-metric-name">cos(θ)</div></div>
+          <div class="doppler-metric" style="flex-basis:100%"><div class="doppler-metric-val" id="d-gate" style="font-size:10px">—</div><div class="doppler-metric-name">Range Gate</div></div>
+        </div>
+        <div class="section-note" style="margin-top:5px;border-top:1px solid var(--border);padding-top:5px">
+          <b style="color:var(--amber)">Physics:</b> Δf = 2·f₀·v·cos(θ)/c<br>
+          θ=90° (⊥ to flow) → <b style="color:var(--red)">Δf=0</b><br>
+          θ=0° (∥ to flow) → <b style="color:var(--green)">max Δf</b><br>
+          Tilt beam with A/D to change θ
+        </div>
+      </div>
+
+      <!-- Add vessel button + form -->
+      <div style="margin-top:8px">
+        <button class="btn btn-cyan btn-sm" style="width:100%" onclick="toggleAddVesselForm()">+ Add Vessel</button>
+        <div id="add-vessel-form" style="display:none;margin-top:8px">
+          <div class="ctrl-row"><span class="ctrl-name">Name</span>
+            <input type="text" class="num-input" id="av-name" value="New Vessel" style="text-align:left;padding:4px 8px"/>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:4px">
+            <div><div class="ctrl-name" style="font-size:9px">Start X (cm)</div>
+              <input type="number" class="num-input" id="av-sx" value="-4" step="0.5"/></div>
+            <div><div class="ctrl-name" style="font-size:9px">Start Y (cm)</div>
+              <input type="number" class="num-input" id="av-sy" value="0" step="0.5"/></div>
+            <div><div class="ctrl-name" style="font-size:9px">End X (cm)</div>
+              <input type="number" class="num-input" id="av-ex" value="4" step="0.5"/></div>
+            <div><div class="ctrl-name" style="font-size:9px">End Y (cm)</div>
+              <input type="number" class="num-input" id="av-ey" value="0" step="0.5"/></div>
+            <div><div class="ctrl-name" style="font-size:9px">Radius (cm)</div>
+              <input type="number" class="num-input" id="av-r" value="0.3" step="0.05" min="0.05"/></div>
+            <div><div class="ctrl-name" style="font-size:9px">Velocity (m/s)</div>
+              <input type="number" class="num-input" id="av-vel" value="0.4" step="0.1" min="0.01"/></div>
+            <div style="grid-column:span 2"><div class="ctrl-name" style="font-size:9px">Flow Direction (°)</div>
+              <input type="number" class="num-input" id="av-dir" value="0" step="5" min="0" max="360"/></div>
+          </div>
+          <button class="btn btn-primary btn-sm" style="width:100%;margin-top:6px" onclick="submitAddVessel()">✓ Add</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Shape Editor (click to edit) ── -->
+    <div class="card" id="us-shape-editor" style="display:none;margin-top:8px">
+      <div class="card-title purple">Edit Shape Properties</div>
+      <div id="us-shape-fields"></div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-primary btn-sm" onclick="applyShapeEdit()">✓ Apply</button>
+        <button class="btn btn-sm" style="background:var(--border);color:var(--text2)" onclick="closeShapeEditor()">✕</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Radar right — self-contained simulator controls -->
+  <div id="rp-radar" style="display:none">
+    <!-- Pause / Resume -->
+    <button id="rs-pause-btn" onclick="rsTogglePause()" style="width:100%;padding:8px;margin-bottom:10px;background:rgba(0,180,255,0.1);border:1px solid #00d4ff;color:#00d4ff;border-radius:6px;cursor:pointer;font-family:var(--font-mono);font-size:11px;letter-spacing:1px;font-weight:700;">Ⅱ PAUSE SCANNING</button>
+
+    <!-- Scanning params -->
+    <div class="card right-section">
+      <div class="card-title">Scanning</div>
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Beam Width</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-bw-val">20°</span><button onclick="rsResetParam('beamWidth',20,'rs-bw-val',v=>v+'°','rs-bw-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="2" max="90" step="1" value="20" id="rs-bw-slider"
+          oninput="rsSetParam('beamWidth',+this.value,'rs-bw-val',v=>v+'°');document.getElementById('rs-bwidth').textContent=this.value+'°'" />
+        <div class="section-note">Narrow = precise · Wide = fast sweep</div>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">Scan Speed</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-spd-val">60°/s</span><button onclick="rsResetParam('scanSpeed',60,'rs-spd-val',v=>v+'°/s','rs-spd-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="5" max="720" step="5" value="60" id="rs-spd-slider"
+          oninput="rsSetParam('scanSpeed',+this.value,'rs-spd-val',v=>v+'°/s')" />
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">Max Range</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-maxr-val">2000m</span><button onclick="rsResetParam('maxRange',2000,'rs-maxr-val',v=>v+'m','rs-maxr-slider',()=>{if(rsSimulator){rsSimulator.confirmedTargets.clear();rsSimulator.focusQueue=[];rsSimulator.phase='SCANNING';}})" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="200" max="5000" step="100" value="2000" id="rs-maxr-slider"
+          oninput="rsSetParam('maxRange',+this.value,'rs-maxr-val',v=>v+'m');if(rsSimulator){rsSimulator.confirmedTargets.clear();rsSimulator.focusQueue=[];rsSimulator.phase='SCANNING';}" />
+        <div class="section-note">Cutoff range for detection & display</div>
+      </div>
+    </div>
+
+    <!-- Signal params -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title amber">Signal</div>
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Receiver SNR</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-snr-val">20 dB</span><button onclick="rsResetParam('snr',20,'rs-snr-val',v=>v+' dB','rs-snr-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="0" max="40" step="1" value="20" id="rs-snr-slider"
+          oninput="rsSetParam('snr',+this.value,'rs-snr-val',v=>v+' dB')" />
+        <div class="section-note">Higher = more sensitive receiver</div>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">TX Power Boost</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-txp-val">0 dB</span><button onclick="rsResetParam('txPower',0,'rs-txp-val',v=>(v>=0?'+':'')+v+' dB','rs-txp-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="-20" max="30" step="1" value="0" id="rs-txp-slider"
+          oninput="rsSetParam('txPower',+this.value,'rs-txp-val',v=>(v>=0?'+':'')+v+' dB')" />
+        <div class="section-note">Boosts signal ∝ power; improves all detections</div>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">Clutter Level</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-clutter-val">−40 dBc</span><button onclick="rsResetParam('clutterLevel',-40,'rs-clutter-val',v=>v+' dBc','rs-clutter-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="-60" max="0" step="1" value="-40" id="rs-clutter-slider"
+          oninput="rsSetParam('clutterLevel',+this.value,'rs-clutter-val',v=>v+' dBc')" />
+        <div class="section-note">−60=calm sea · 0=heavy clutter masks targets</div>
+      </div>
+    </div>
+
+    <!-- Waveform params -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title" style="color:var(--purple)">Waveform</div>
+      <div class="ctrl-row">
+        <div class="ctrl-label"><span class="ctrl-name">Frequency</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-freq-val">9.5 GHz</span><button onclick="rsResetParam('frequency',9.5,'rs-freq-val',v=>v.toFixed(1)+' GHz','rs-freq-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="1" max="35" step="0.5" value="9.5" id="rs-freq-slider"
+          oninput="rsSetParam('frequency',+this.value,'rs-freq-val',v=>v.toFixed(1)+' GHz')" />
+        <div class="section-note">L/S/X/Ka band · Higher freq = better angular res</div>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">Pulse Width (τ)</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-pw-val">1.0 µs</span><button onclick="rsResetParam('pulseWidth',1.0,'rs-pw-val',v=>v.toFixed(1)+' µs','rs-pw-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="0.1" max="10" step="0.1" value="1" id="rs-pw-slider"
+          oninput="rsSetParam('pulseWidth',+this.value,'rs-pw-val',v=>v.toFixed(1)+' µs')" />
+        <div class="section-note">Short τ = fine range resolution · Long τ = +SNR</div>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">PRF</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-prf-val">1000 Hz</span><button onclick="rsResetParam('prf',1000,'rs-prf-val',v=>v+' Hz','rs-prf-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="100" max="5000" step="100" value="1000" id="rs-prf-slider"
+          oninput="rsSetParam('prf',+this.value,'rs-prf-val',v=>v+' Hz')" />
+        <div class="section-note">High PRF = fast update · limits max range (c/2PRF)</div>
+      </div>
+      <div class="ctrl-row" style="margin-top:6px">
+        <div class="ctrl-label"><span class="ctrl-name">Rain Atten.</span><span style="display:flex;align-items:center;gap:5px"><span class="ctrl-val" id="rs-rain-val">0 dB/km</span><button onclick="rsResetParam('rainAtten',0,'rs-rain-val',v=>v.toFixed(1)+' dB/km','rs-rain-slider')" class="rs-rst-btn" title="Reset to default">↺</button></span></div>
+        <input type="range" min="0" max="10" step="0.5" value="0" id="rs-rain-slider"
+          oninput="rsSetParam('rainAtten',+this.value,'rs-rain-val',v=>v.toFixed(1)+' dB/km')" />
+        <div class="section-note">Two-way loss = 2 × atten × range(km)</div>
+      </div>
+    </div>
+
+    <!-- Targets -->
+    <div class="card right-section" style="margin-top:8px">
+      <div class="card-title purple">Targets <span id="rs-tgt-count" style="color:var(--text3)">(0/5)</span></div>
+      <button class="btn btn-cyan btn-sm" style="width:100%;margin-bottom:8px" onclick="rsAddTarget()">+ Add Target</button>
+      <div id="rs-target-list"></div>
+    </div>
+
+    <!-- Guide -->
+    <div class="card" style="margin-top:8px">
+      <div class="card-title" style="color:#00d4ff">Physics Guide</div>
+      <div class="section-note" style="line-height:1.7">
+        <b style="color:#00d4ff">SCANNING:</b> Broad beam sweeps 360°.<br>
+        <b style="color:var(--amber)">FOCUSING:</b> 3° beam locks &amp; dwells 1.5s.<br>
+        <b style="color:var(--purple)">SNR eff</b> = SNR + TX − clutter − pulse.<br>
+        <b style="color:var(--purple)">Range res</b> = c·τ/2.<br>
+        <b style="color:var(--amber)">PRF max</b> = c/(2·PRF) — beyond = AMB.<br>
+        <b style="color:#ffc107">Rain</b>: 2-way loss scales with distance.<br>
+        <b style="color:#00d4ff">Drag</b> · <b style="color:#ffc400">Scroll</b> resize · <b style="color:#f55">Right-click</b> delete · <b style="color:#aaa">Click empty</b> add.
+      </div>
+    </div>
+
+    <button class="btn btn-danger btn-sm" style="width:100%;margin-top:10px" onclick="rsReset()">⟳ Reset to Defaults</button>
+  </div>
+
+</div>
+</main>
+</div>
+
+<div id="toast"></div>
+<div id="phantom-tooltip"></div>
+
+<script>
+'use strict';
+const API='http://localhost:8000/api';
+let currentApp='core', gridSize=80;
+let params={num_elements:8,element_spacing:0.5,frequency_hz:2.4e9,steering_angle_deg:0,amplitude:1,sampling_rate:1e10,pulse_width:1e-6,apodization_window:'rectangular',snr_db:30};
+let chartProfile=null,chartWeights=null,chartAmode=null,chartBmode=null,chartDoppler=null,chartFivegBeams=null,chartRadarProfile=null;
+let fivegState=null,radarState=null,phantomData=null;
+let radarBodies=[],editingShapeId=null;
+let radarAnimFrame=null,radarSweepAngle=0,radarAutoMode=true;
+let probeX=0,probeBeamAngle=0,activeVesselId=0;
+window._focalDepthCm=8.0;
+let ppiHistory=new Array(360).fill(0);
+
+// ── probe drag state ──
+let probeIsDragging=false, probeDragStartX=0, probeDragStartProbeX=0;
+
+async function api(path,method='GET',body=null){
+  try{
+    const opts={method,headers:{'Content-Type':'application/json'}};
+    if(body) opts.body=JSON.stringify(body);
+    const r=await fetch(API+path,opts);
+    if(!r.ok){console.warn('API',path,r.status);return null;}
+    return await r.json();
+  }catch(e){return null;}
+}
+async function checkConnection(){
+  const d=await api('/params');
+  const dot=document.getElementById('api-dot'),lbl=document.getElementById('api-label');
+  if(d){dot.style.background='var(--green)';dot.style.boxShadow='0 0 6px var(--green)';lbl.style.color='var(--green)';lbl.textContent='ONLINE';}
+  else{dot.style.background='var(--red)';dot.style.boxShadow='0 0 6px var(--red)';lbl.style.color='var(--red)';lbl.textContent='OFFLINE';}
+  return !!d;
+}
+function toast(msg,color='var(--cyan)'){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.style.color=color;
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);
+}
+
+// ── App switching ──
+function switchApp(app){
+  if(radarAnimFrame){clearTimeout(radarAnimFrame);radarAnimFrame=null;}
+  if(app!=='radar') rsStopLoop();
+  currentApp=app;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+app).classList.add('active');
+  document.querySelectorAll('.sim-page').forEach(p=>p.classList.remove('active'));
+  document.getElementById('page-'+app).classList.add('active');
+  ['core','fiveg','us','radar'].forEach(a=>{
+    const el=document.getElementById('rp-'+a);
+    if(el) el.style.display=a===app?'':'none';
+  });
+  // Hide left panel for US and Radar (they have their own param controls)
+  document.querySelector('.left-panel').classList.toggle('hidden-panel', app==='us'||app==='radar');
+  document.querySelector('main').classList.toggle('us-mode', app==='us'||app==='radar');
+  refreshApp();
+}
+function refreshApp(){
+  if(currentApp==='core') refreshCore();
+  else if(currentApp==='fiveg') load5GState();
+  else if(currentApp==='us') loadUSState();
+  else if(currentApp==='radar') loadRadarState();
+}
+function refreshAll(){refreshApp();toast('Refreshed');}
+
+// ── Params ──
+let debounceTimer=null;
+function updateParam(key,val,dispId,fmt){
+  params[key]=val;document.getElementById(dispId).textContent=fmt(val);
+  clearTimeout(debounceTimer);debounceTimer=setTimeout(applyParams,160);
+}
+function updateFreq(ghz){
+  params.frequency_hz=ghz*1e9;document.getElementById('val-f').textContent=ghz.toFixed(2)+' GHz';
+  clearTimeout(debounceTimer);debounceTimer=setTimeout(applyParams,160);
+}
+function updateWindow(w){
+  params.apodization_window=w;
+  const redux={rectangular:0,hanning:31.5,hamming:42.7,blackman:58.1,chebyshev:50,taylor:35};
+  document.getElementById('val-sidelobe-red').textContent=(redux[w]?'-':'')+redux[w]+' dB';
+  clearTimeout(debounceTimer);debounceTimer=setTimeout(applyParams,160);
+}
+function onSNRChange(v){
+  const snr=parseFloat(v);params.snr_db=snr;
+  document.getElementById('snr-display').textContent=snr+' dB';
+  document.getElementById('m-snr').textContent=snr;
+  // Sync US SNR controls too
+  usParams.snr_db=snr;
+  const uspSnr=document.getElementById('usp-snr');
+  const uspSnrVal=document.getElementById('usp-snr-val');
+  if(uspSnr) uspSnr.value=snr;
+  if(uspSnrVal) uspSnrVal.textContent=snr+' dB';
+  clearTimeout(debounceTimer);debounceTimer=setTimeout(applyParams,160);
+}
+  async function applyParams() {
+    // Route parameter updates to the active simulator backend.
+    // Core BF uses /params, while 5G has its own independent /5g/params state.
+    if(currentApp==='us'){
+      await applyUSParams();
+      return;
+    }
+    const endpoint = currentApp === 'fiveg' ? '/5g/params' : '/params';
+    const d = await api(endpoint, 'POST', params);
+    if (d) refreshApp();
+  }
+
+// ── Core tabs ──
+function switchCoreTab(tab){
+  ['interference','profile','weights'].forEach(t=>{
+    document.getElementById('ctab-'+t).classList.toggle('active',t===tab);
+    // interference box uses flex layout when shown
+    const box=document.getElementById('box-'+t);
+    if(t===tab){
+      box.style.display=(t==='interference')?'flex':'';
+    } else {
+      box.style.display='none';
+    }
+  });
+  if(tab==='interference') drawInterferenceMap();
+  else if(tab==='profile')  drawBeamProfile();
+  else drawWeights();
+}
+
+// ════════════════════════════════════════════════════════════
+//  CORE BF ENHANCED VISUALIZATIONS
+//  - Plasma/viridis colormap heatmap (physics-correct)
+//  - Native Canvas 2D polar beam profile (like reference image)
+//  - All 7 params physically correct
+// ════════════════════════════════════════════════════════════
+
+// Plasma colormap (perceptually uniform, matches reference)
+function plasmaColor(t) {
+  // Sampled plasma LUT (matplotlib plasma)
+  const lut=[
+    [13,8,135],[70,3,159],[114,1,168],[155,15,163],[191,52,142],
+    [218,84,108],[238,118,73],[249,153,38],[252,188,11],[240,230,9],
+    [253,253,52]
+  ];
+  t=Math.max(0,Math.min(1,t));
+  const i=t*(lut.length-1);
+  const lo=Math.floor(i),hi=Math.min(lo+1,lut.length-1);
+  const f=i-lo;
+  return [
+    Math.round(lut[lo][0]*(1-f)+lut[hi][0]*f),
+    Math.round(lut[lo][1]*(1-f)+lut[hi][1]*f),
+    Math.round(lut[lo][2]*(1-f)+lut[hi][2]*f),
+  ];
+}
+
+// Viridis for beam polar overlay
+function viridisColor(t) {
+  const lut=[
+    [68,1,84],[72,40,120],[62,83,160],[49,120,183],[38,153,186],
+    [31,186,174],[64,209,145],[128,227,98],[205,240,53],[253,231,37]
+  ];
+  t=Math.max(0,Math.min(1,t));
+  const i=t*(lut.length-1);
+  const lo=Math.floor(i),hi=Math.min(lo+1,lut.length-1);
+  const f=i-lo;
+  return [
+    Math.round(lut[lo][0]*(1-f)+lut[hi][0]*f),
+    Math.round(lut[lo][1]*(1-f)+lut[hi][1]*f),
+    Math.round(lut[lo][2]*(1-f)+lut[hi][2]*f),
+  ];
+}
+
+// ── Interference heatmap (plasma, physics-correct) ──
+async function drawInterferenceMap(){
+  const loading=document.getElementById('loading-imap');
+  loading.classList.add('show');
+
+  // Fetch both interference map and beam profile in parallel
+  const [d, bp] = await Promise.all([
+    api('/beam/interference?grid_size='+gridSize),
+    api('/beam/profile')
+  ]);
+  loading.classList.remove('show');
+  if(!d) return;
+  if(bp){ updateMetrics(bp); drawPolarBeamProfile(bp); }
+
+  const canvas=document.getElementById('canvas-imap');
+  canvas.width=canvas.offsetWidth||600;
+  canvas.height=canvas.offsetHeight||450;
+  const ctx=canvas.getContext('2d');
+  const map=d.map;
+  const rows=map.length, cols=map[0].length;
+
+  // Apply log-scale stretch for better dynamic range visualization
+  // Physics: interference intensity spans many orders of magnitude
+  const flat=map.flat();
+  const maxV=Math.max(...flat,1e-9);
+  const useLog=true; // log scale brings out sidelobe structure
+
+  const imgData=ctx.createImageData(canvas.width,canvas.height);
+  for(let py=0;py<canvas.height;py++){
+    for(let px=0;px<canvas.width;px++){
+      // Map canvas pixel → data grid, Y-flip (array at bottom)
+      const my=Math.floor((1-py/canvas.height)*rows);
+      const mx=Math.floor(px/canvas.width*cols);
+      let v=(map[Math.max(0,Math.min(rows-1,my))]?.[Math.max(0,Math.min(cols-1,mx))]||0)/maxV;
+      if(useLog) v=Math.max(0, Math.log10(v*999+1)/3); // log stretch
+      const [r,g,b]=plasmaColor(v);
+      const idx=(py*canvas.width+px)*4;
+      imgData.data[idx]=r; imgData.data[idx+1]=g; imgData.data[idx+2]=b; imgData.data[idx+3]=255;
+    }
+  }
+  ctx.putImageData(imgData,0,0);
+
+  // ── Grid overlay (spatial scale in λ) ──
+  const extentLambda=d.extent_m/(3e8/params.frequency_hz);
+  document.getElementById('imap-extent-label').textContent=Math.round(extentLambda);
+
+  // Draw grid lines at ±λ intervals
+  ctx.setLineDash([2,4]);
+  ctx.lineWidth=0.5;
+  ctx.strokeStyle='rgba(255,255,255,0.12)';
+  for(let xl=-Math.floor(extentLambda);xl<=Math.floor(extentLambda);xl+=Math.max(1,Math.floor(extentLambda/6))){
+    const px=(xl+extentLambda)/(2*extentLambda)*canvas.width;
+    ctx.beginPath(); ctx.moveTo(px,0); ctx.lineTo(px,canvas.height); ctx.stroke();
+    if(xl!==0){
+      ctx.fillStyle='rgba(255,255,255,0.25)'; ctx.font='8px monospace'; ctx.textAlign='center';
+      ctx.fillText(xl+'λ',px,canvas.height-2);
+    }
+  }
+  ctx.setLineDash([]);
+
+  // ── Center axis ──
+  ctx.strokeStyle='rgba(255,255,255,0.25)';
+  ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(canvas.width/2,0); ctx.lineTo(canvas.width/2,canvas.height); ctx.stroke();
+
+  // ── Far-field label ──
+  ctx.fillStyle='rgba(255,255,255,0.35)'; ctx.font='9px monospace'; ctx.textAlign='right';
+  ctx.fillText('far field ↑',canvas.width-6,16);
+
+  // ── Array element dots at bottom ──
+  const cx=canvas.width/2;
+  const arrayLenPx = (params.num_elements-1)*params.element_spacing / (2*extentLambda) * canvas.width;
+  const elemSpacPx  = arrayLenPx / Math.max(1, params.num_elements-1);
+  const ey=canvas.height-8;
+  ctx.fillStyle='rgba(0,0,0,0.4)';
+  ctx.fillRect(0,canvas.height-22,canvas.width,22);
+  ctx.fillStyle='rgba(255,255,255,0.2)'; ctx.font='7px monospace'; ctx.textAlign='left';
+  ctx.fillText('▲ array (N='+params.num_elements+', d='+params.element_spacing.toFixed(2)+'λ)', 6, canvas.height-2);
+  for(let i=0;i<params.num_elements;i++){
+    const ex=cx+(i-(params.num_elements-1)/2)*elemSpacPx;
+    ctx.beginPath(); ctx.arc(ex,ey,3.5,0,Math.PI*2);
+    ctx.fillStyle='#fbbf24'; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.6)'; ctx.lineWidth=0.8; ctx.stroke();
+  }
+
+  // ── Steering direction ray ──
+  const steerRad=params.steering_angle_deg*Math.PI/180;
+  const rayLen=Math.min(canvas.width,canvas.height)*0.42;
+  ctx.beginPath(); ctx.moveTo(cx,ey);
+  ctx.lineTo(cx+Math.sin(steerRad)*rayLen, ey-Math.cos(steerRad)*rayLen);
+  ctx.strokeStyle='rgba(0,245,255,0.7)'; ctx.lineWidth=1.5; ctx.setLineDash([4,4]);
+  ctx.stroke(); ctx.setLineDash([]);
+  // Arrow head
+  const ax=cx+Math.sin(steerRad)*rayLen, ay=ey-Math.cos(steerRad)*rayLen;
+  const ha=Math.atan2(-Math.cos(steerRad),Math.sin(steerRad));
+  ctx.beginPath();
+  ctx.moveTo(ax,ay);
+  ctx.lineTo(ax+Math.cos(ha-0.4)*8,ay+Math.sin(ha-0.4)*8);
+  ctx.lineTo(ax+Math.cos(ha+0.4)*8,ay+Math.sin(ha+0.4)*8);
+  ctx.closePath(); ctx.fillStyle='rgba(0,245,255,0.8)'; ctx.fill();
+
+  // ── Colorbar ──
+  const cbW=10,cbH=canvas.height*0.55,cbX=canvas.width-cbW-14,cbY=(canvas.height-cbH)/2;
+  for(let y=0;y<cbH;y++){
+    const [r,g,b]=plasmaColor(1-y/cbH);
+    ctx.fillStyle=`rgb(${r},${g},${b})`; ctx.fillRect(cbX,cbY+y,cbW,1);
+  }
+  ctx.strokeStyle='rgba(255,255,255,0.2)'; ctx.lineWidth=0.8; ctx.strokeRect(cbX,cbY,cbW,cbH);
+  ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.font='7px monospace'; ctx.textAlign='left';
+  ctx.fillText('HIGH',cbX+cbW+2,cbY+6);
+  ctx.fillText('LOW', cbX+cbW+2,cbY+cbH+2);
+  // Log scale label
+  ctx.save(); ctx.translate(cbX-4,cbY+cbH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillStyle='rgba(255,255,255,0.3)'; ctx.font='7px monospace'; ctx.textAlign='center';
+  ctx.fillText('intensity (log)',0,0); ctx.restore();
+}
+
+// ── Polar beam profile (native Canvas — like reference image) ──
+function drawPolarBeamProfile(bp){
+  const canvas=document.getElementById('canvas-polar');
+  if(!canvas) return;
+  canvas.width=canvas.offsetWidth||380;
+  canvas.height=canvas.offsetHeight||380;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const W=canvas.width, H=canvas.height;
+  const cx=W/2, cy=H/2;
+  const R=Math.min(W,H)*0.42; // beam pattern radius
+  const dbMin=-35; // dB floor for display
+
+  // ── Background ──
+  ctx.fillStyle='#050912'; ctx.fillRect(0,0,W,H);
+
+  // ── Polar grid rings (dB scale) ──
+  const dbRings=[-6,-12,-18,-24,-30];
+  dbRings.forEach(db=>{
+    const rr=R*(1-db/dbMin);
+    if(rr<=0||rr>R*1.05) return;
+    ctx.beginPath(); ctx.arc(cx,cy,rr,0,Math.PI*2);
+    ctx.strokeStyle='rgba(0,245,255,0.12)'; ctx.lineWidth=0.5; ctx.stroke();
+    // Label
+    ctx.fillStyle='rgba(0,245,255,0.3)'; ctx.font='8px monospace'; ctx.textAlign='left';
+    ctx.fillText(db+'dB',cx+rr+2,cy-2);
+  });
+
+  // Outer ring
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2);
+  ctx.strokeStyle='rgba(0,245,255,0.22)'; ctx.lineWidth=1; ctx.stroke();
+
+  // ── Angle spokes ──
+  for(let a=0;a<360;a+=30){
+    const rad=a*Math.PI/180;
+    ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.sin(rad)*R,cy-Math.cos(rad)*R);
+    ctx.strokeStyle='rgba(0,245,255,0.08)'; ctx.lineWidth=0.5; ctx.stroke();
+    // Angle labels
+    const lx=cx+Math.sin(rad)*(R+14), ly=cy-Math.cos(rad)*(R+14);
+    ctx.fillStyle='rgba(0,245,255,0.4)'; ctx.font='8px monospace'; ctx.textAlign='center';
+    ctx.fillText(a+'°',lx,ly+3);
+  }
+
+  // ── Beam pattern ──
+  const angles=bp.angles;
+  const mags=bp.magnitude_db;
+  const N=angles.length;
+
+  // Build filled beam path
+  ctx.beginPath();
+  let first=true;
+  for(let i=0;i<N;i++){
+    const angDeg=angles[i]; // -180 to 180
+    const db=Math.max(dbMin,mags[i]);
+    const norm=(db-dbMin)/(0-dbMin); // 0=dbMin → 1=0dB
+    const r=R*norm;
+    const rad=angDeg*Math.PI/180;
+    const px=cx+Math.sin(rad)*r, py=cy-Math.cos(rad)*r;
+    if(first){ctx.moveTo(px,py);first=false;}
+    else ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+  // Fill with gradient
+  const grd=ctx.createRadialGradient(cx,cy,0,cx,cy,R);
+  grd.addColorStop(0,'rgba(0,245,255,0.35)');
+  grd.addColorStop(0.6,'rgba(0,245,255,0.12)');
+  grd.addColorStop(1,'rgba(0,245,255,0.02)');
+  ctx.fillStyle=grd; ctx.fill();
+  // Stroke beam outline
+  ctx.beginPath(); first=true;
+  for(let i=0;i<N;i++){
+    const angDeg=angles[i];
+    const db=Math.max(dbMin,mags[i]);
+    const norm=(db-dbMin)/(0-dbMin);
+    const r=R*norm;
+    const rad=angDeg*Math.PI/180;
+    const px=cx+Math.sin(rad)*r, py=cy-Math.cos(rad)*r;
+    if(first){ctx.moveTo(px,py);first=false;}
+    else ctx.lineTo(px,py);
+  }
+  ctx.closePath();
+  ctx.strokeStyle='#00f5ff'; ctx.lineWidth=1.5; ctx.stroke();
+
+  // ── 3dB and 6dB rings ──
+  [-3,-6].forEach((dbL,idx)=>{
+    const norm=(dbL-dbMin)/(0-dbMin);
+    const rr=R*norm;
+    ctx.beginPath(); ctx.arc(cx,cy,rr,0,Math.PI*2);
+    ctx.strokeStyle=idx===0?'rgba(0,255,136,0.35)':'rgba(0,255,136,0.2)';
+    ctx.lineWidth=0.8; ctx.setLineDash([3,4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle='rgba(0,255,136,0.5)'; ctx.font='7px monospace'; ctx.textAlign='left';
+    ctx.fillText(dbL+'dB',cx+rr+2,cy+2);
+  });
+
+  // ── Steer direction indicator ──
+  const steerRad=params.steering_angle_deg*Math.PI/180;
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.sin(steerRad)*R,cy-Math.cos(steerRad)*R);
+  ctx.strokeStyle='rgba(255,117,24,0.7)'; ctx.lineWidth=1.5; ctx.setLineDash([5,3]); ctx.stroke(); ctx.setLineDash([]);
+
+  // ── Legend ──
+  const ly2=H-22;
+  ctx.fillStyle='#00f5ff'; ctx.fillRect(8,ly2,20,2);
+  ctx.fillStyle='rgba(0,245,255,0.5)'; ctx.font='8px monospace'; ctx.textAlign='left';
+  ctx.fillText('beam pattern',32,ly2+4);
+
+  ctx.strokeStyle='rgba(255,117,24,0.7)'; ctx.lineWidth=1.5; ctx.setLineDash([5,3]);
+  ctx.beginPath(); ctx.moveTo(8,ly2+10); ctx.lineTo(28,ly2+10); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(255,117,24,0.7)';
+  ctx.fillText('steer direction',32,ly2+14);
+
+  ctx.strokeStyle='rgba(0,255,136,0.4)'; ctx.lineWidth=0.8; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(8,ly2+20); ctx.lineTo(28,ly2+20); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(0,255,136,0.6)';
+  ctx.fillText('-3dB / -6dB rings',32,ly2+24);
+
+  // ── Metrics overlay ──
+  ctx.fillStyle='rgba(0,0,0,0.55)';
+  ctx.fillRect(4,4,120,38);
+  ctx.fillStyle='rgba(0,245,255,0.7)'; ctx.font='7px monospace'; ctx.textAlign='left';
+  ctx.fillText('HPBW: '+(bp.beamwidth_deg||0).toFixed(1)+'°', 8, 15);
+  ctx.fillText('SLL:  '+(bp.sidelobe_level_db||0).toFixed(1)+' dB', 8, 26);
+  ctx.fillText('θ₀:   '+params.steering_angle_deg.toFixed(1)+'°', 8, 37);
+}
+
+// ── Beam profile (Cartesian dB, Chart.js) ──
+async function drawBeamProfile(){
+  const d=await api('/beam/profile');if(!d)return;
+  updateMetrics(d);
+  const canvas=document.getElementById('canvas-profile');
+  canvas.width=canvas.offsetWidth||500;canvas.height=canvas.offsetHeight||400;
+  const ctx=canvas.getContext('2d');
+  if(chartProfile){chartProfile.destroy();chartProfile=null;}
+
+  // 3dB beamwidth annotation lines
+  const mainIdx=d.magnitude.indexOf(Math.max(...d.magnitude));
+  const half3db=d.magnitude.map(v=>v>=0.707);
+
+  chartProfile=new Chart(ctx,{
+    type:'line',
+    data:{labels:d.angles.map(a=>a.toFixed(0)),datasets:[
+      {
+        label:'Beam Profile (dB)',
+        data:d.magnitude_db,
+        borderColor:'#00f5ff',
+        backgroundColor:ctx2=>{
+          if(!ctx2.chart.chartArea) return 'transparent';
+          const g=ctx2.chart.ctx.createLinearGradient(0,ctx2.chart.chartArea.top,0,ctx2.chart.chartArea.bottom);
+          g.addColorStop(0,'rgba(0,245,255,0.25)');
+          g.addColorStop(1,'rgba(0,245,255,0.0)');
+          return g;
+        },
+        borderWidth:2,pointRadius:0,fill:true,tension:0.3
+      },
+      {
+        label:'-3 dB threshold',
+        data:Array(d.angles.length).fill(-3),
+        borderColor:'rgba(0,255,136,0.4)',
+        backgroundColor:'transparent',
+        borderWidth:1,pointRadius:0,fill:false,borderDash:[5,5]
+      },
+      {
+        label:'-13 dB (first sidelobe theory)',
+        data:Array(d.angles.length).fill(-13.3),
+        borderColor:'rgba(255,117,24,0.3)',
+        backgroundColor:'transparent',
+        borderWidth:1,pointRadius:0,fill:false,borderDash:[3,4]
+      }
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:200},
+      scales:{
+        x:{
+          title:{display:true,text:'Angle (°)',color:'#4a5280',font:{size:10}},
+          ticks:{color:'#4a5280',maxTicksLimit:13,font:{size:9}},
+          grid:{color:'rgba(42,45,85,0.4)'}
+        },
+        y:{
+          title:{display:true,text:'Magnitude (dB)',color:'#4a5280',font:{size:10}},
+          ticks:{color:'#4a5280',font:{size:9}},
+          grid:{color:'rgba(42,45,85,0.4)'},
+          min:-60,max:3
+        }
+      },
+      plugins:{
+        legend:{labels:{color:'#8892b0',font:{size:9},boxWidth:20}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${c.parsed.y.toFixed(2)} dB`}}
+      }
+    }
+  });
+}
+
+// ── Array weights ──
+async function drawWeights(){
+  const d=await api('/beam/weights');if(!d)return;
+  const canvas=document.getElementById('canvas-weights');
+  canvas.width=canvas.offsetWidth||500;canvas.height=canvas.offsetHeight||400;
+  const ctx=canvas.getContext('2d');
+  if(chartWeights){chartWeights.destroy();chartWeights=null;}
+  const reals=d.weights.map(w=>w[0]),imags=d.weights.map(w=>w[1]),mags=d.weights.map(w=>Math.sqrt(w[0]*w[0]+w[1]*w[1]));
+  chartWeights=new Chart(ctx,{
+    type:'bar',
+    data:{labels:d.weights.map((_,i)=>'E'+i),datasets:[
+      {label:'Real',data:reals,backgroundColor:'rgba(0,245,255,0.45)',borderColor:'#00f5ff',borderWidth:1},
+      {label:'Imag',data:imags,backgroundColor:'rgba(168,85,247,0.45)',borderColor:'#a855f7',borderWidth:1},
+      {label:'|w|',data:mags,backgroundColor:'rgba(16,255,176,0.3)',borderColor:'#10ffb0',borderWidth:1,type:'line',pointRadius:4,fill:false}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#8892b0',font:{size:10}}}},
+      scales:{x:{ticks:{color:'#4a5280',font:{size:9}},grid:{color:'rgba(42,45,85,0.5)'}},y:{ticks:{color:'#4a5280'},grid:{color:'rgba(42,45,85,0.5)'}}}}
+  });
+  drawArrayElements(d.positions);
+}
+function drawArrayElements(positions){
+  const canvas=document.getElementById('canvas-array-elem');
+  canvas.width=canvas.offsetWidth||240;canvas.height=55;
+  const ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!positions||!positions.length)return;
+  const xs=positions.map(p=>p[0]),mn=Math.min(...xs),mx=Math.max(...xs),range=mx-mn||1,pad=16;
+  ctx.strokeStyle='rgba(42,45,85,0.8)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(pad,28);ctx.lineTo(canvas.width-pad,28);ctx.stroke();
+  positions.forEach((p,i)=>{
+    const x=pad+(p[0]-mn)/range*(canvas.width-2*pad);
+    ctx.beginPath();ctx.arc(x,28,8,0,Math.PI*2);ctx.fillStyle='rgba(251,191,36,0.1)';ctx.fill();
+    ctx.beginPath();ctx.arc(x,28,5,0,Math.PI*2);ctx.fillStyle='#fbbf24';ctx.fill();
+    ctx.strokeStyle='rgba(0,245,255,0.6)';ctx.lineWidth=1;ctx.stroke();
+    ctx.fillStyle='rgba(74,82,128,0.9)';ctx.font='7px Space Mono';ctx.textAlign='center';ctx.fillText(i,x,46);
+  });
+}
+function updateMetrics(bp){
+  document.getElementById('m-mainlobe').textContent=(bp.main_lobe_angle||0).toFixed(1)+'°';
+  document.getElementById('m-beamwidth').textContent=bp.beamwidth_deg!=null?bp.beamwidth_deg.toFixed(1)+'°':'—';
+  document.getElementById('m-sidelobe').textContent=bp.sidelobe_level_db!=null?bp.sidelobe_level_db.toFixed(1)+' dB':'—';
+}
+async function refreshCore(){
+  const tab=document.querySelector('.ctab.active');if(!tab)return;
+  const id=tab.id.replace('ctab-','');
+  if(id==='interference') await drawInterferenceMap();
+  else if(id==='profile')  await drawBeamProfile();
+  else await drawWeights();
+}
+
+// ════════════════════════════════════
+  // 5G SIMULATOR  (enhanced)
+  // ════════════════════════════════════
+
+  // ── Constants & palette ───────────────────────────────────────────────────────
+  const COLORS_TOWER = ['#00f5ff', '#a855f7', '#10ffb0'];
+  const COLORS_USER = ['#fbbf24', '#ff4d6d'];
+  const EXTENT_5G = 600;
+  const TOWER_ELEM_ICONS = ['△', '▲', '◬'];  // visual hint per element count tier
+
+  // ── Auto-refresh state ────────────────────────────────────────────────────────
+  let fiveg5GAutoInterval = null;
+
+  // ── WorldToCanvas helper ──────────────────────────────────────────────────────
+  function worldToCanvas(x, y, canvas) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const scale = Math.min(canvas.width, canvas.height) / (EXTENT_5G * 2);
+    return [cx + x * scale, cy - y * scale];
+}
+
+  // ── Canvas-to-world helper (for distance annotation placement) ────────────────
+  function canvasToWorld(px, py, canvas) {
+    const cx = canvas.width / 2;
+    const cy = canvas.height / 2;
+    const scale = Math.min(canvas.width, canvas.height) / (EXTENT_5G * 2);
+    return [(px - cx) / scale, (cy - py) / scale];
+}
+
+  // ── Load & orchestrate ────────────────────────────────────────────────────────
+  async function load5GState() {
+    fivegState = await api('/5g/state');
+    if (!fivegState) return;
+    draw5GMap();
+    render5GList();
+    renderConnectivityTable();
+    const at = document.querySelector('#page-fiveg .ctab.active');
+    if (at?.id === 'ftab-coverage') draw5GCoverage();
+    else if (at?.id === 'ftab-beams') draw5GBeams();
+  }
+
+  // ── Map rendering ─────────────────────────────────────────────────────────────
+  function draw5GMap() {
+    if (!fivegState) return;
+    const canvas = document.getElementById('fiveg-canvas');
+    canvas.width = canvas.offsetWidth || 600;
+    canvas.height = canvas.offsetHeight || 500;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Background grid
+    ctx.strokeStyle = 'rgba(42,45,85,0.35)';
+    ctx.lineWidth = 0.5;
+    const step = canvas.width / 14;
+    for (let x = 0; x <= canvas.width; x += step) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke(); }
+    for (let y = 0; y <= canvas.height; y += step) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke(); }
+
+    const { towers, users, connectivity } = fivegState;
+    const scale = Math.min(canvas.width, canvas.height) / (EXTENT_5G * 2);
+    const pairProfiles = fivegState.beam_profiles || {};
+
+    // 1. Draw influence radius rings
+    towers.forEach((t, i) => {
+      const [tx, ty] = worldToCanvas(t.position[0], t.position[1], canvas);
+      const cr = 500 * scale;  // 500m influence
+      ctx.beginPath();
+      ctx.arc(tx, ty, cr, 0, Math.PI * 2);
+      ctx.strokeStyle = COLORS_TOWER[i] + '28';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 6]);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // Soft fill
+      ctx.beginPath();
+      ctx.arc(tx, ty, cr, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS_TOWER[i] + '08';
+      ctx.fill();
+  });
+
+  // 2. Draw beam-connectivity lines with SNR annotation
+  Object.entries(connectivity).forEach(([uid, tid]) => {
+    if (tid == null) return;
+    const u = users[+uid];
+    const t = towers[tid];
+    const [ux, uy] = worldToCanvas(u.position[0], u.position[1], canvas);
+    const [tx, ty] = worldToCanvas(t.position[0], t.position[1], canvas);
+
+    // Animated dashed gradient beam line
+    const grad = ctx.createLinearGradient(tx, ty, ux, uy);
+    grad.addColorStop(0, COLORS_TOWER[tid] + 'ee');
+    grad.addColorStop(1, COLORS_USER[+uid] + '88');
+
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    ctx.lineTo(ux, uy);
+    ctx.strokeStyle = grad;
+    ctx.lineWidth = 2.5;
+    ctx.setLineDash([10, 5]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Distance label at midpoint
+    const mx = (ux + tx) / 2;
+    const my = (uy + ty) / 2;
+    const dist = Math.sqrt((u.position[0] - t.position[0]) ** 2 + (u.position[1] - t.position[1]) ** 2);
+    ctx.fillStyle = '#ffffff99';
+    ctx.font = '8px Space Mono';
+    ctx.textAlign = 'center';
+    ctx.fillText(dist.toFixed(0) + 'm', mx, my - 12);
+
+    // SNR label slightly offset
+    const snrColor = u.received_snr_db > 15 ? '#10ffb0' : u.received_snr_db > 5 ? '#fbbf24' : '#ff4d6d';
+    ctx.fillStyle = snrColor;
+    ctx.font = 'bold 9px Space Mono';
+    ctx.fillText(u.received_snr_db.toFixed(1) + ' dB', mx, my + 2);
+  });
+
+  // 3. Draw real beam footprints using backend-computed profiles
+  Object.entries(pairProfiles).forEach(([pairKey, profile]) => {
+    if (!profile?.angles?.length || !profile?.magnitude?.length) return;
+    const match = pairKey.match(/^T(\d+)\s*-\s*UE(\d+)$/);
+    if (!match) return;
+    const tid = Number(match[1]);
+    const uid = Number(match[2]);
+    const t = towers[tid];
+    const u = users[uid];
+    if (!t || !u) return;
+    const [tx, ty] = worldToCanvas(t.position[0], t.position[1], canvas);
+    const beamReachPx = 420 * scale;
+    const targetAngleDeg = Math.atan2(u.position[1] - t.position[1], u.position[0] - t.position[0]) * 180 / Math.PI;
+    const normDeg = (a) => {
+      let x = a;
+      while (x > 180) x -= 360;
+      while (x < -180) x += 360;
+      return x;
+    };
+    const inForwardHemisphere = (aDeg, centerDeg) => Math.abs(normDeg(aDeg - centerDeg)) <= 90;
+    // Align profile frame so its strongest lobe points to the linked user.
+    const mags = profile.magnitude.map(v => Math.max(0, Number(v ?? 0)));
+    let peakIdx = 0;
+    for (let i = 1; i < mags.length; i++) if (mags[i] > mags[peakIdx]) peakIdx = i;
+    const peakAngleDeg = Number(profile.angles[peakIdx] ?? 0);
+    const beamRotationDeg = normDeg(targetAngleDeg - peakAngleDeg);
+
+    // Build a filled polar polygon from the true AF magnitudes.
+    ctx.beginPath();
+    ctx.moveTo(tx, ty);
+    let hasPoint = false;
+    for (let k = 0; k < profile.angles.length; k++) {
+      const worldDeg = normDeg(Number(profile.angles[k]) + beamRotationDeg);
+      // Keep only the forward hemisphere centered on tower->UE direction.
+      // This suppresses the mirrored/back lobe so only one directed beam is shown.
+      if (!inForwardHemisphere(worldDeg, targetAngleDeg)) continue;
+
+      // World angle frame: 0° = +X, +90° = +Y.
+      const ang = worldDeg * Math.PI / 180;
+      const mag = Math.max(0, Number(profile.magnitude[k] ?? 0));
+      const r = Math.min(1, mag) * beamReachPx;
+      const px = tx + Math.cos(ang) * r;
+      const py = ty - Math.sin(ang) * r;
+      ctx.lineTo(px, py);
+      hasPoint = true;
+    }
+    if (!hasPoint) return;
+    ctx.closePath();
+    ctx.fillStyle = COLORS_TOWER[tid] + '1f';
+    ctx.fill();
+    ctx.strokeStyle = COLORS_TOWER[tid] + '88';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+  });
+
+  // 4. Draw beam steering arrow + tower node
+  towers.forEach((t, i) => {
+    const [x, y] = worldToCanvas(t.position[0], t.position[1], canvas);
+    const ar = (t.steering_angle_deg * Math.PI) / 180;
+    const beamLen = 65;
+
+    // Beam main direction line
+    const bx = x + Math.cos(ar) * beamLen;
+    const by = y - Math.sin(ar) * beamLen;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(bx, by);
+    ctx.strokeStyle = COLORS_TOWER[i];
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Arrowhead
+    const perpR = ar;
+    ctx.beginPath();
+    ctx.moveTo(bx, by);
+    ctx.lineTo(bx + Math.cos(perpR - 2.5) * 9, by + Math.sin(perpR - 2.5) * 9);
+    ctx.lineTo(bx + Math.cos(perpR + 2.5) * 9, by + Math.sin(perpR + 2.5) * 9);
+    ctx.closePath();
+    ctx.fillStyle = COLORS_TOWER[i];
+    ctx.fill();
+
+    // Tower glow ring
+    const grd = ctx.createRadialGradient(x, y, 4, x, y, 18);
+    grd.addColorStop(0, COLORS_TOWER[i] + '44');
+    grd.addColorStop(1, COLORS_TOWER[i] + '00');
+    ctx.beginPath();
+    ctx.arc(x, y, 18, 0, Math.PI * 2);
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    // Tower circle
+    ctx.beginPath();
+    ctx.arc(x, y, 14, 0, Math.PI * 2);
+    ctx.fillStyle = COLORS_TOWER[i] + '22';
+    ctx.strokeStyle = COLORS_TOWER[i];
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+
+    // Tower label
+    ctx.fillStyle = COLORS_TOWER[i];
+    ctx.font = 'bold 10px Syne';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('T' + i, x, y);
+    ctx.textBaseline = 'top';
+
+    // Tower sub-info: name + steering angle
+    ctx.font = '7px Space Mono';
+    ctx.fillStyle = COLORS_TOWER[i] + 'cc';
+    ctx.fillText(t.name, x, y + 17);
+    ctx.fillStyle = '#ffffff99';
+    ctx.fillText(t.steering_angle_deg.toFixed(1) + '°  N=' + t.num_elements, x, y + 27);
+    ctx.fillText((t.frequency_hz / 1e9).toFixed(2) + 'GHz  ' + t.apodization_window, x, y + 37);
+  });
+
+  // 5. Draw user nodes
+  users.forEach((u, i) => {
+    const [x, y] = worldToCanvas(u.position[0], u.position[1], canvas);
+    const connected = u.connected_tower_id != null;
+
+    // User diamond
+    ctx.beginPath();
+    ctx.moveTo(x, y - 12);
+    ctx.lineTo(x + 10, y);
+    ctx.lineTo(x, y + 12);
+    ctx.lineTo(x - 10, y);
+    ctx.closePath();
+    ctx.fillStyle = connected ? COLORS_USER[i] + '33' : 'rgba(255,77,109,0.08)';
+    ctx.strokeStyle = connected ? COLORS_USER[i] : '#ff4d6d';
+    ctx.lineWidth = 2;
+    ctx.fill();
+    ctx.stroke();
+
+    // User label
+    ctx.fillStyle = COLORS_USER[i];
+    ctx.font = 'bold 8px Space Mono';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText('UE-' + i, x, y + 14);
+
+    // Signal label
+    if (connected) {
+      const snrColor = u.received_snr_db > 15 ? '#10ffb0' : u.received_snr_db > 5 ? '#fbbf24' : '#ff4d6d';
+      ctx.fillStyle = snrColor;
+      ctx.font = '7px Space Mono';
+      ctx.fillText(u.signal_strength_dbm.toFixed(0) + 'dBm', x, y + 24);
+    } else {
+      ctx.fillStyle = '#ff4d6d';
+      ctx.font = '7px Space Mono';
+      ctx.fillText('NO SIG', x, y + 24);
+    }
+  });
+
+  ctx.textBaseline = 'alphabetic';
+}
+
+  // ── Right-panel tower list with live beamforming params ───────────────────────
+  function render5GList() {
+    if (!fivegState) return;
+
+    // Tower cards with all live params
+    document.getElementById('tower-list').innerHTML = fivegState.towers.map((t, i) => {
+      const connUEs = t.connected_user_ids.length;
+      const connLabel = connUEs === 0
+        ? `<span style="color:var(--text3)">idle</span>`
+        : `<span style="color:${COLORS_TOWER[i]}">${connUEs} UE${connUEs > 1 ? 's' : ''}</span>`;
+
+      return `<div style="background:var(--bg3);border:1px solid ${COLORS_TOWER[i]}44;border-radius:6px;padding:8px;margin-bottom:6px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+        <span style="font-family:var(--font-mono);font-size:10px;color:${COLORS_TOWER[i]};font-weight:700">${t.name}</span>
+        ${connLabel}
+        <span class="pulse-dot" style="color:${COLORS_TOWER[i]}"></span>
+      </div>
+      <div class="info-row"><span class="info-key">Freq</span><span class="info-val">${(t.frequency_hz / 1e9).toFixed(2)} GHz</span></div>
+      <div class="info-row"><span class="info-key">Steer Angle</span><span class="info-val" style="color:var(--amber)">${t.steering_angle_deg.toFixed(1)}°</span></div>
+      <div class="info-row"><span class="info-key">Elements N</span><span class="info-val" style="color:var(--cyan)">${t.num_elements}</span></div>
+      <div class="info-row"><span class="info-key">Spacing</span><span class="info-val">${t.element_spacing.toFixed(2)} λ</span></div>
+      <div class="info-row"><span class="info-key">Amplitude</span><span class="info-val">${t.amplitude.toFixed(3)}</span></div>
+      <div class="info-row"><span class="info-key">Window</span><span class="info-val" style="color:var(--purple)">${t.apodization_window}</span></div>
+      <div class="info-row"><span class="info-key">Beamwidth</span><span class="info-val">${t.beamwidth_deg.toFixed(1)}°</span></div>
+      <div class="info-row"><span class="info-key">Sidelobe</span><span class="info-val">${t.sidelobe_db.toFixed(1)} dB</span></div>
+    </div>`;
+    }).join('');
+
+    // User cards
+    document.getElementById('user-list').innerHTML = fivegState.users.map((u, i) => {
+      const tid = u.connected_tower_id;
+      const cls = tid != null ? (u.received_snr_db > 15 ? 'connected' : 'weak') : 'disconnected';
+      const towerName = tid != null ? fivegState.towers[tid]?.name : 'none';
+      return `<div class="entity-item" style="border-color:${COLORS_USER[i]}44">
+      <div>
+        <div class="entity-name" style="color:${COLORS_USER[i]}">${u.name}</div>
+        <div class="entity-info">(${u.position[0].toFixed(0)}, ${u.position[1].toFixed(0)}) m</div>
+        <div class="entity-info">SNR: ${u.received_snr_db.toFixed(1)} dB | ${u.signal_strength_dbm.toFixed(0)} dBm</div>
+        <div class="entity-info">Serving: <span style="color:${tid != null ? COLORS_TOWER[tid] : '#ff4d6d'}">${towerName}</span></div>
+      </div>
+      <span class="badge ${cls}">${cls.toUpperCase()}</span>
+    </div>`;
+  }).join('');
+          }
+
+          // ── Connectivity summary table ────────────────────────────────────────────────
+          function renderConnectivityTable() {
+            if (!fivegState) return;
+            const { towers, users, connectivity } = fivegState;
+            const rows = users.map((u, i) => {
+              const tid = connectivity[u.user_id];
+              const t = tid != null ? towers[tid] : null;
+              const color = tid != null ? COLORS_TOWER[tid] : '#ff4d6d';
+              const dist = t ? Math.sqrt((u.position[0] - t.position[0]) ** 2 + (u.position[1] - t.position[1]) ** 2).toFixed(0) + 'm' : '—';
+              return `<div class="info-row">
+      <span class="info-key" style="color:${COLORS_USER[i]}">${u.name}</span>
+      <span class="info-val">
+        <span style="color:${color}">${t ? t.name : 'NO LINK'}</span>
+        <span style="color:var(--text3);font-size:9px"> ${dist}</span>
+      </span>
+    </div>`;
+  }).join('');
+  document.getElementById('fiveg-conn-table').innerHTML = rows || '<div class="section-note">No connections</div>';
+}
+
+  // ── Tab switcher ──────────────────────────────────────────────────────────────
+  function switch5GTab(tab) {
+    ['map', 'beams', 'coverage'].forEach(t => {
+      document.getElementById('ftab-' + t).classList.toggle('active', t === tab);
+      const box = t === 'map' ? 'box-fiveg-map' : (t === 'beams' ? 'box-fiveg-beams' : 'box-fiveg-coverage');
+      document.getElementById(box).style.display = t === tab ? '' : 'none';
+  });
+      if (tab === 'map') draw5GMap();
+      else if (tab === 'coverage') draw5GCoverage();
+      else draw5GBeams();
+    }
+
+    // ── Coverage heatmap ──────────────────────────────────────────────────────────
+    async function draw5GCoverage() {
+      const d = await api('/5g/coverage');
+      if (!d) return;
+      const canvas = document.getElementById('canvas-fiveg-coverage');
+      canvas.width = canvas.offsetWidth || 500;
+      canvas.height = canvas.offsetHeight || 500;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const map = d.coverage_map, tmap = d.tower_map;
+      const rows = map.length, cols = map[0].length;
+      const sw = canvas.width / cols, sh = canvas.height / rows;
+      const towerColors = [[0, 245, 255], [168, 85, 247], [16, 255, 176]];
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const v = map[rows - 1 - y][x];
+          const ti = tmap[rows - 1 - y][x];
+          const [r, g, b] = ti >= 0 ? towerColors[ti] : [80, 80, 100];
+          ctx.fillStyle = `rgba(${r},${g},${b},${Math.max(0.04, v * 0.75)})`;
+          ctx.fillRect(x * sw, y * sh, sw, sh);
+        }
+  }
+
+  // Legend
+  towerColors.forEach(([r, g, b], i) => {
+    ctx.fillStyle = `rgb(${r},${g},${b})`;
+    ctx.fillRect(10, 10 + i * 18, 12, 12);
+    ctx.fillStyle = 'rgba(226,232,255,0.75)';
+    ctx.font = '9px Space Mono';
+    ctx.fillText('gNB-' + i, 26, 20 + i * 18);
+  });
+
+  // Draw tower and user positions on coverage
+  if (fivegState) {
+    fivegState.towers.forEach((t, i) => {
+      const [px, py] = worldToCanvas(t.position[0], t.position[1], canvas);
+      ctx.beginPath();
+      ctx.arc(px, py, 6, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS_TOWER[i];
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 1;
+      ctx.fill(); ctx.stroke();
+    });
+    fivegState.users.forEach((u, i) => {
+      const [px, py] = worldToCanvas(u.position[0], u.position[1], canvas);
+      ctx.beginPath();
+      ctx.arc(px, py, 5, 0, Math.PI * 2);
+      ctx.fillStyle = COLORS_USER[i];
+      ctx.fill();
+    });
+  }
+  }
+
+  // ── Beam profiles chart ───────────────────────────────────────────────────────
+  async function draw5GBeams() {
+    const d = await api('/5g/beams');
+    if (!d || !Object.keys(d.beam_profiles).length) {
+      toast('No active beam connections', 'var(--text3)');
+      return;
+    }
+    const canvas = document.getElementById('canvas-fiveg-beams');
+    canvas.width = canvas.offsetWidth || 500;
+    canvas.height = canvas.offsetHeight || 400;
+    const ctx = canvas.getContext('2d');
+    if (chartFivegBeams) { chartFivegBeams.destroy(); chartFivegBeams = null; }
+
+    const colors = ['#00f5ff', '#a855f7', '#10ffb0', '#fbbf24', '#ff4d6d', '#ff8c42'];
+    const datasets = Object.entries(d.beam_profiles).map(([key, bp], i) => ({
+      label: key,
+      data: bp.angles.map((a, j) => ({ x: a, y: bp.magnitude[j] })),
+      borderColor: colors[i % colors.length],
+      borderWidth: 2,
+      pointRadius: 0,
+      tension: 0.3,
+  }));
+      chartFivegBeams = new Chart(ctx, {
+        type: 'line',
+        data: { datasets },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: { type: 'linear', title: { display: true, text: 'Angle (°)', color: '#4a5280' }, ticks: { color: '#4a5280' }, grid: { color: 'rgba(42,45,85,0.5)' } },
+            y: { title: { display: true, text: 'Normalized Magnitude', color: '#4a5280' }, ticks: { color: '#4a5280' }, grid: { color: 'rgba(42,45,85,0.5)' } },
+          },
+          plugins: { legend: { labels: { color: '#8892b0', font: { size: 10 } } } },
+        },
+      });
+    }
+
+    // ── Reset ─────────────────────────────────────────────────────────────────────
+    async function fivegReset() {
+      await api('/5g/reset', 'POST');
+      await load5GState();
+      toast('5G network reset', 'var(--green)');
+}
+
+  // ── Keyboard movement ─────────────────────────────────────────────────────────
+  let keysDown = {};
+  document.addEventListener('keydown', e => {
+    keysDown[e.key] = true;
+    if (currentApp === 'fiveg') {
+    handleUserMovement(e.key);
+    if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) e.preventDefault();
+  }
+  if (currentApp === 'us') handleUSKeyboard(e);
+});
+  document.addEventListener('keyup', e => { delete keysDown[e.key]; });
+
+  async function handleUserMovement(key) {
+    const step = 30;
+    let req = null;
+    if (['w', 'a', 's', 'd'].includes(key.toLowerCase())) {
+      const dx = key.toLowerCase() === 'd' ? step : key.toLowerCase() === 'a' ? -step : 0;
+      const dy = key.toLowerCase() === 'w' ? step : key.toLowerCase() === 's' ? -step : 0;
+      req = { user_id: 0, dx, dy };
+    } else if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key)) {
+      const dx = key === 'ArrowRight' ? step : key === 'ArrowLeft' ? -step : 0;
+      const dy = key === 'ArrowUp' ? step : key === 'ArrowDown' ? -step : 0;
+      req = { user_id: 1, dx, dy };
+    }
+    if (req) {
+      fivegState = await api('/5g/user/move', 'POST', req);
+      draw5GMap();
+      render5GList();
+      renderConnectivityTable();
+    }
+  }
+
+  // ── Auto-refresh when 5G tab is active ───────────────────────────────────────
+  function start5GAutoRefresh() {
+    stop5GAutoRefresh();
+    fiveg5GAutoInterval = setInterval(() => {
+      if (currentApp === 'fiveg') load5GState();
+    }, 800);
+  }
+  function stop5GAutoRefresh() {
+    if (fiveg5GAutoInterval) { clearInterval(fiveg5GAutoInterval); fiveg5GAutoInterval = null; }
+}
+
+
+
+// ════════════════════════════════════
+// ULTRASOUND SIMULATOR
+// ════════════════════════════════════
+let usRefreshTimer = null;
+let lastDopplerData = null;   // cached for overlay redraw
+
+// US-specific params — 10 total (satisfies ≥7 task requirement)
+const US_DEFAULTS = {
+  frequency_hz:      5e6,    // 5 MHz — transmit frequency; λ=c/f sets resolution & depth
+  pulse_width_us:    0.5,    // 0.5 µs — pulse duration; axial_res = c·τ/2
+  num_elements:      64,     // array element count; aperture = N·d → lateral resolution
+  amplitude:         1.0,    // 1 V transmit voltage; P∝A² → echo strength & penetration
+  spacing_lambda:    0.5,    // element spacing in λ units; d≤λ/2 avoids grating lobes
+  sampling_rate_mhz: 40,     // ADC rate; must be ≥2×f (Nyquist) else Doppler aliasing
+  snr_db:            30,     // signal-to-noise ratio applied to all US outputs
+  tgc_db_cm:         2.0,    // Time Gain Compensation slope; gain(z)=TGC·z compensates attenuation
+  focal_depth_cm:    5.0,    // beam focus depth; lat_res = λ·F/D; best sharpness here
+  sound_speed_ms:    1540    // propagation speed in tissue; z = c·t/2
+};
+let usParams = Object.assign({}, US_DEFAULTS);
+let usParamsDebounce = null;
+
+// ── Reset all 10 params to defaults ──────────────────────────────────────────
+function resetUSParams(){
+  usParams = Object.assign({}, US_DEFAULTS);
+  // Sync all sliders and displays
+  document.getElementById('usp-freq').value   = 5;
+  document.getElementById('usp-freq-val').textContent = '5.0 MHz';
+  document.getElementById('usp-pw').value     = 0.5;
+  document.getElementById('usp-pw-val').textContent   = '0.50 µs';
+  document.getElementById('usp-n').value      = 64;
+  document.getElementById('usp-n-val').textContent    = '64';
+  document.getElementById('usp-amp').value    = 1;
+  document.getElementById('usp-amp-val').textContent  = '1.0 V';
+  document.getElementById('usp-sp').value     = 0.5;
+  document.getElementById('usp-sp-val').textContent   = '0.50 λ';
+  document.getElementById('usp-sp-val').style.color   = '';
+  document.getElementById('usp-fs').value     = 40;
+  document.getElementById('usp-fs-val').textContent   = '40 MHz';
+  document.getElementById('usp-snr').value    = 30;
+  document.getElementById('usp-snr-val').textContent  = '30 dB';
+  document.getElementById('usp-tgc').value    = 2;
+  document.getElementById('usp-tgc-val').textContent  = '2.00 dB/cm';
+  document.getElementById('usp-fd').value     = 5;
+  document.getElementById('usp-fd-val').textContent   = '5.0 cm';
+  document.getElementById('usp-c').value      = 1540;
+  document.getElementById('usp-c-val').textContent    = '1540 m/s';
+  // Sync global SNR header
+  params.snr_db = 30;
+  document.getElementById('snr-display').textContent = '30 dB';
+  document.getElementById('m-snr').textContent = '30';
+  document.getElementById('snr-slider').value = 30;
+  // Sync probe-control displays
+  const fdisp = document.getElementById('us-freq-disp');
+  if(fdisp) fdisp.textContent = '5.0 MHz';
+  const cdisp = document.getElementById('us-c-disp');
+  if(cdisp) cdisp.textContent = '1540 m/s';
+  applyUSParams();
+  toast('US parameters reset to defaults','#00f5ff');
+}
+
+// ── Update a single US param ──────────────────────────────────────────────────
+function updateUSParam(key, val, dispId, fmt){
+  usParams[key] = val;
+  document.getElementById(dispId).textContent = fmt(val);
+  // Keep secondary Probe Control displays in sync
+  if(key === 'frequency_hz'){
+    const el = document.getElementById('us-freq-disp');
+    if(el) el.textContent = (val/1e6).toFixed(1) + ' MHz';
+    // Recompute spacing label since λ changed
+    _refreshSpacingLabel();
+  }
+  if(key === 'sound_speed_ms'){
+    const el = document.getElementById('us-c-disp');
+    if(el) el.textContent = val + ' m/s';
+    _refreshSpacingLabel();
+  }
+  if(key === 'focal_depth_cm'){
+    window._focalDepthCm = val; // keep legacy reference in sync
+  }
+  clearTimeout(usParamsDebounce);
+  usParamsDebounce = setTimeout(applyUSParams, 180);
+}
+
+function _refreshSpacingLabel(){
+  const lambda_mm = (usParams.sound_speed_ms / usParams.frequency_hz) * 1000;
+  const d_mm = (usParams.spacing_lambda * lambda_mm).toFixed(2);
+  const warn = usParams.spacing_lambda > 0.5 ? ' ⚠GL' : '';
+  const el = document.getElementById('usp-sp-val');
+  if(el){
+    el.textContent = usParams.spacing_lambda.toFixed(2) + ' λ (' + d_mm + 'mm)' + warn;
+    el.style.color = usParams.spacing_lambda > 0.5 ? 'var(--red)' : '';
+  }
+}
+
+function updateUSSpacing(val){
+  usParams.spacing_lambda = val;
+  _refreshSpacingLabel();
+  clearTimeout(usParamsDebounce);
+  usParamsDebounce = setTimeout(applyUSParams, 180);
+}
+
+function updateUSSnr(val){
+  usParams.snr_db = val;
+  document.getElementById('usp-snr-val').textContent = val + ' dB';
+  // Sync global SNR header
+  params.snr_db = val;
+  document.getElementById('snr-display').textContent = val + ' dB';
+  document.getElementById('m-snr').textContent = val;
+  document.getElementById('snr-slider').value = val;
+  clearTimeout(usParamsDebounce);
+  usParamsDebounce = setTimeout(applyUSParams, 180);
+}
+
+async function applyUSParams(){
+  window._focalDepthCm = usParams.focal_depth_cm;
+  const body = {
+    frequency_hz:     usParams.frequency_hz,
+    pulse_width:      usParams.pulse_width_us * 1e-6,
+    num_elements:     usParams.num_elements,
+    amplitude:        usParams.amplitude,
+    spacing_lambda:   usParams.spacing_lambda,
+    sampling_rate_hz: usParams.sampling_rate_mhz * 1e6,
+    snr_db:           usParams.snr_db,
+    tgc_db_cm:        usParams.tgc_db_cm,
+    focal_depth_cm:   usParams.focal_depth_cm,
+    sound_speed_ms:   usParams.sound_speed_ms
+  };
+  await api('/us/params', 'POST', body);
+  drawUSWaveform();
+  await loadAmode();
+  await runBmodeLive();
+  await loadDoppler();
+}
+
+function drawUSWaveform(){
+  const canvas = document.getElementById('canvas-us-waveform');
+  if(!canvas) return;
+  canvas.width  = canvas.offsetWidth  || 800;
+  canvas.height = canvas.offsetHeight || 110;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#030408';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Pull all 10 params
+  const N    = usParams.num_elements;
+  const freq = usParams.frequency_hz;
+  const snr  = usParams.snr_db;
+  const pw   = usParams.pulse_width_us;
+  const amp  = usParams.amplitude;
+  const dLam = usParams.spacing_lambda;    // d in units of λ
+  const fs   = usParams.sampling_rate_mhz;
+  const tgc  = usParams.tgc_db_cm;
+  const fd   = usParams.focal_depth_cm;
+  const c    = usParams.sound_speed_ms;
+
+  const noiseAmp   = Math.pow(10, -snr / 20);
+  const lambda_m   = c / freq;                        // wavelength in metres
+  const d_m        = dLam * lambda_m;                 // actual element spacing (m)
+  const steerRad   = probeBeamAngle * Math.PI / 180;
+  // Steering phase step per element: Δφ = 2π·d·sin(θ)/λ
+  const phaseStep  = 2 * Math.PI * d_m * Math.sin(steerRad) / lambda_m;
+  const F_m        = fd / 100;                        // focal depth in metres
+  const gratingLobe = dLam > 0.5;
+  // Nyquist check: fs must be ≥ 2×f
+  const nyquistOk  = fs >= 2 * (freq / 1e6);
+
+  const margin = 48;
+  const plotW  = canvas.width - margin * 2;
+  const nShow  = Math.min(N, 8);
+  const trackH = (canvas.height - 14) / nShow;
+  const cycles = Math.max(2, Math.min(4, pw * freq * 1e-6));
+
+  for(let ei = 0; ei < nShow; ei++){
+    const elemIdx = Math.round(ei / Math.max(1, nShow - 1) * (N - 1));
+
+    // Steering phase
+    const steerPhi = elemIdx * phaseStep;
+    // Focal phase: Δφ_focus = 2π/λ·(√(F²+xn²) − F)
+    const xn = (elemIdx - (N - 1) / 2) * d_m;
+    const focalPhi = (2 * Math.PI / lambda_m) * (Math.sqrt(F_m * F_m + xn * xn) - F_m);
+    const totalPhi = steerPhi + focalPhi;
+
+    // TGC boost simulated at mid-depth (fd/2): gain(z) = 10^(TGC·z/20)
+    const tgcGain   = Math.min(3, Math.pow(10, tgc * (fd / 2) / 20));
+    // Amplitude × TGC scales waveform height
+    const ampPx     = trackH * 0.36 * Math.min(amp * tgcGain, 4);
+
+    // Color: cyan → purple across elements
+    const t = ei / Math.max(1, nShow - 1);
+    const cr = Math.round(t * 192), cg = Math.round(245 - t * 149), cb = Math.round(255 - t * 90);
+
+    const yC = 8 + trackH * ei + trackH * 0.5;
+
+    // Baseline
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.12)`;
+    ctx.lineWidth = 0.5;
+    ctx.moveTo(margin, yC); ctx.lineTo(margin + plotW, yC);
+    ctx.stroke();
+
+    // Grating lobe warning background
+    if(gratingLobe){
+      ctx.fillStyle = 'rgba(255,51,85,0.07)';
+      ctx.fillRect(margin, yC - trackH * 0.48, plotW, trackH * 0.96);
+    }
+
+    // Draw waveform — use fewer points when fs is low (shows aliasing visually)
+    const drawPts = nyquistOk ? 220 : Math.max(16, Math.round(fs / (freq / 1e6) * cycles * 3));
+    ctx.beginPath();
+    ctx.strokeStyle = `rgba(${cr},${cg},${cb},0.88)`;
+    ctx.lineWidth = nyquistOk ? 1.4 : 1.0;
+    let first = true;
+    for(let ti = 0; ti < drawPts; ti++){
+      const tNorm  = ti / (drawPts - 1);
+      const tSec   = tNorm * cycles / freq;
+      const tMid   = cycles / (2 * freq);
+      const sigma  = pw * 1e-6 / 3;
+      // Gaussian-windowed pulse envelope
+      const env    = Math.exp(-0.5 * ((tSec - tMid) / sigma) ** 2);
+
+      // When aliased: apparent frequency folds to |f - fs·MHz|
+      const dispFreq = nyquistOk ? freq : Math.abs(freq - fs * 1e6);
+      let sample = env * Math.sin(2 * Math.PI * dispFreq * tSec + totalPhi);
+
+      // Grating lobe ghost: secondary oscillation at shifted phase (d > λ/2)
+      if(gratingLobe){
+        const ghostPhi = elemIdx * phaseStep * (1 + 1 / dLam) * 0.35;
+        sample += env * Math.sin(2 * Math.PI * freq * tSec + ghostPhi) * 0.35;
+      }
+
+      const noise = (Math.random() * 2 - 1) * noiseAmp * 0.55;
+      const x = margin + tNorm * plotW;
+      const y = yC - (sample + noise) * ampPx;
+      if(first){ ctx.moveTo(x, y); first = false; } else { ctx.lineTo(x, y); }
+    }
+    ctx.stroke();
+
+    // Label: element index + steering° + focal°
+    ctx.fillStyle = `rgba(${cr},${cg},${cb},0.72)`;
+    ctx.font = '7px Space Mono';
+    ctx.textAlign = 'right';
+    ctx.fillText(
+      `E${elemIdx} s:${(steerPhi*180/Math.PI).toFixed(0)}° f:${(focalPhi*180/Math.PI).toFixed(0)}°`,
+      margin - 2, yC + 3
+    );
+  }
+
+  // Wavefront line connecting peaks
+  if(nShow >= 2){
+    ctx.beginPath();
+    ctx.setLineDash([3, 4]);
+    ctx.strokeStyle = 'rgba(255,220,0,0.5)';
+    ctx.lineWidth = 1.3;
+    for(let ei = 0; ei < nShow; ei++){
+      const elemIdx = Math.round(ei / Math.max(1, nShow - 1) * (N - 1));
+      const steerPhi2 = elemIdx * phaseStep;
+      const xn2 = (elemIdx - (N - 1) / 2) * d_m;
+      const focalPhi2 = (2 * Math.PI / lambda_m) * (Math.sqrt(F_m*F_m + xn2*xn2) - F_m);
+      const phi2 = steerPhi2 + focalPhi2;
+      const tMid2 = cycles / (2 * freq);
+      const tPeak = tMid2 - phi2 / (2 * Math.PI * freq);
+      const tNorm = Math.max(0, Math.min(1, tPeak * freq / cycles));
+      const x = margin + tNorm * plotW;
+      const yC2 = 8 + trackH * ei + trackH * 0.5;
+      ei === 0 ? ctx.moveTo(x, yC2) : ctx.lineTo(x, yC2);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Status bar with all active params + warnings
+  const glWarn = gratingLobe ? ' ⚠GRATING LOBE' : '';
+  const nyWarn = !nyquistOk  ? ' ⚠ALIASING(fs<2f)' : '';
+  ctx.fillStyle = gratingLobe ? 'rgba(255,51,85,0.8)' : !nyquistOk ? 'rgba(255,193,7,0.8)' : 'rgba(0,245,255,0.5)';
+  ctx.font = '7px Space Mono';
+  ctx.textAlign = 'left';
+  ctx.fillText(
+    `f=${(freq/1e6).toFixed(1)}MHz  A=${amp.toFixed(1)}V  d=${dLam.toFixed(2)}λ  fs=${fs}MHz  SNR=${snr}dB  TGC=${tgc}dB/cm  F=${fd}cm  c=${c}m/s  θ=${probeBeamAngle.toFixed(0)}°${glWarn}${nyWarn}`,
+    margin, canvas.height - 3
+  );
+}
+
+// ── Load all US ──────────────────────────────────────────────────────────────
+async function loadUSState(){
+  window._focalDepthCm = usParams.focal_depth_cm;
+  const body = {
+    frequency_hz:     usParams.frequency_hz,
+    pulse_width:      usParams.pulse_width_us * 1e-6,
+    num_elements:     usParams.num_elements,
+    amplitude:        usParams.amplitude,
+    spacing_lambda:   usParams.spacing_lambda,
+    sampling_rate_hz: usParams.sampling_rate_mhz * 1e6,
+    snr_db:           usParams.snr_db,
+    tgc_db_cm:        usParams.tgc_db_cm,
+    focal_depth_cm:   usParams.focal_depth_cm,
+    sound_speed_ms:   usParams.sound_speed_ms
+  };
+  await api('/us/params', 'POST', body);
+  await loadPhantom();
+  await Promise.all([loadAmode(), loadDoppler(), runBmodeLive()]);
+  renderVesselList();
+  drawUSWaveform();
+}
+
+// ── Phantom rendering ────────────────────────────────────────────────────────
+async function loadPhantom(){
+  phantomData = await api('/us/phantom');
+  if(!phantomData) return;
+  drawPhantom();
+  const el=document.getElementById('us-freq-disp');
+  if(el) el.textContent=(usParams.frequency_hz/1e6).toFixed(1)+' MHz';
+}
+
+// Convert phantom cm coords → canvas pixels
+function cm2px(cx_cm, cy_cm, canvas){
+  return [(cx_cm+10)/20*canvas.width, (cy_cm+10)/20*canvas.height];
+}
+
+function drawPhantom(){
+  if(!phantomData) return;
+  const canvas = document.getElementById('us-phantom');
+  canvas.width  = canvas.offsetWidth  || 220;
+  canvas.height = canvas.offsetHeight || 380;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle='#030408'; ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // ── Phantom image (brighter palette) ──────────────────────────────────
+  const img=phantomData.image, rows=img.length, cols=img[0].length;
+  const sw=canvas.width/cols, sh=canvas.height/rows;
+  for(let r=0;r<rows;r++){
+    for(let c=0;c<cols;c++){
+      const v=Math.min(1,Math.max(0,img[r]?.[c]||0));
+      if(v<0.005) continue;
+      // Bright teal-white scale for tissue
+      const L=Math.round(v*255);
+      ctx.fillStyle=`rgb(${Math.round(L*0.55)},${Math.round(L*0.9)},${L})`;
+      ctx.fillRect(c*sw,r*sh,sw+0.5,sh+0.5);
+    }
+  }
+
+  // ── Blood vessels ──────────────────────────────────────────────────────
+  const vessels = phantomData.vessels||[];
+  const bdx=Math.sin(probeBeamAngle*Math.PI/180);
+  const bdy=Math.cos(probeBeamAngle*Math.PI/180);
+
+  vessels.forEach(v=>{
+    if(v.deleted) return;
+    const isActive = v.vessel_id===activeVesselId;
+    const [sx,sy]=cm2px(v.start[0],v.start[1],canvas);
+    const [ex,ey]=cm2px(v.end[0],v.end[1],canvas);
+    const lw = Math.max(3, v.radius_cm*canvas.width/10);
+
+    // Vessel tube
+    ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(ex,ey);
+    ctx.strokeStyle=isActive?'#ff3355':'rgba(255,50,80,0.6)';
+    ctx.lineWidth=lw; ctx.globalAlpha=isActive?1:0.65; ctx.stroke(); ctx.globalAlpha=1;
+
+    // Flow arrow on center
+    const mx=(sx+ex)/2, my=(sy+ey)/2;
+    const fr=v.direction_deg*Math.PI/180;
+    const al=16;
+    ctx.save();
+    ctx.strokeStyle=isActive?'#ff8c00':'rgba(255,140,0,0.7)';
+    ctx.lineWidth=2.5;
+    // Arrow shaft
+    ctx.beginPath();
+    ctx.moveTo(mx-Math.cos(fr)*al/2, my-Math.sin(fr)*al/2);
+    ctx.lineTo(mx+Math.cos(fr)*al/2, my+Math.sin(fr)*al/2);
+    ctx.stroke();
+    // Arrowhead
+    const ax=mx+Math.cos(fr)*al/2, ay=my+Math.sin(fr)*al/2;
+    ctx.beginPath();
+    ctx.moveTo(ax, ay);
+    ctx.lineTo(ax-Math.cos(fr-0.4)*7, ay-Math.sin(fr-0.4)*7);
+    ctx.lineTo(ax-Math.cos(fr+0.4)*7, ay-Math.sin(fr+0.4)*7);
+    ctx.closePath();
+    ctx.fillStyle=isActive?'#ff8c00':'rgba(255,140,0,0.7)';
+    ctx.fill();
+    ctx.restore();
+
+    // Live Doppler angle θ label (pure JS geometry, no API needed)
+    const fdx=Math.cos(fr), fdy=Math.sin(fr);
+    const dot=Math.abs(bdx*fdx+bdy*fdy);
+    const theta=Math.round(Math.acos(Math.min(1,dot))*180/Math.PI);
+    const tc=theta>75?'#ff3355':theta>45?'#ffc107':'#00ff88';
+    ctx.font='bold 8px Space Mono'; ctx.textAlign='center';
+    ctx.fillStyle='rgba(0,0,0,0.7)';
+    ctx.fillText('θ='+theta+'°', mx+1, my+lw/2+12);
+    ctx.fillStyle=tc;
+    ctx.fillText('θ='+theta+'°', mx, my+lw/2+11);
+
+    // Vessel ID label
+    ctx.fillStyle=isActive?'#ff3355':'rgba(255,80,100,0.8)';
+    ctx.font='bold 8px Space Mono'; ctx.textAlign='center';
+    ctx.fillText('V'+v.vessel_id, mx, my-lw/2-4);
+  });
+
+  // ── Probe body ─────────────────────────────────────────────────────────
+  const [ppx,ppy]=cm2px(probeX,-9.5,canvas);
+  // Glow
+  const pgrd=ctx.createRadialGradient(ppx,ppy,2,ppx,ppy,20);
+  pgrd.addColorStop(0,'rgba(255,193,7,0.4)'); pgrd.addColorStop(1,'rgba(255,193,7,0)');
+  ctx.beginPath(); ctx.arc(ppx,ppy,20,0,Math.PI*2);
+  ctx.fillStyle=pgrd; ctx.fill();
+  // Body
+  ctx.fillStyle='#ffc107'; ctx.fillRect(ppx-16,ppy-6,32,12);
+  ctx.strokeStyle='#ffeb3b'; ctx.lineWidth=1.5; ctx.strokeRect(ppx-16,ppy-6,32,12);
+  // Elements
+  for(let e=0;e<8;e++){
+    ctx.fillStyle='#000'; ctx.fillRect(ppx-14+e*4,ppy-5,2.5,10);
+  }
+
+  // ── Beam ───────────────────────────────────────────────────────────────
+  const beamRad = probeBeamAngle*Math.PI/180;
+  const sinA=Math.sin(beamRad), cosA=Math.cos(beamRad);
+
+  // Focal depth pixel position
+  const focalData = lastDopplerData?.focal_depth_cm;
+  const focalDepthCm = window._focalDepthCm || 8.0;
+  const focalPx = focalDepthCm/20*canvas.height;
+
+  // Near-field zone (tight beam)
+  const nearEndPx = focalPx;
+  // Far-field: beam widens
+  const farW = 0.04; // divergence half-angle rad
+
+  // Beam cone near-field (converging)
+  ctx.beginPath();
+  ctx.moveTo(ppx-8,ppy+6);
+  ctx.lineTo(ppx+sinA*nearEndPx - Math.cos(beamRad)*3, ppy+6+cosA*nearEndPx + Math.sin(beamRad)*3);
+  ctx.lineTo(ppx+sinA*nearEndPx + Math.cos(beamRad)*3, ppy+6+cosA*nearEndPx - Math.sin(beamRad)*3);
+  ctx.lineTo(ppx+8,ppy+6);
+  ctx.closePath();
+  ctx.fillStyle='rgba(255,193,7,0.07)'; ctx.fill();
+  ctx.strokeStyle='rgba(255,193,7,0.2)'; ctx.lineWidth=0.8; ctx.stroke();
+
+  // Far-field (diverging)
+  const totalLen=canvas.height*0.96;
+  const wAtEnd=(totalLen-focalPx)*Math.tan(farW);
+  ctx.beginPath();
+  ctx.moveTo(ppx+sinA*nearEndPx - Math.cos(beamRad)*3, ppy+6+cosA*nearEndPx + Math.sin(beamRad)*3);
+  ctx.lineTo(ppx+sinA*totalLen - Math.cos(beamRad)*(3+wAtEnd), ppy+6+cosA*totalLen+Math.sin(beamRad)*(3+wAtEnd));
+  ctx.moveTo(ppx+sinA*nearEndPx + Math.cos(beamRad)*3, ppy+6+cosA*nearEndPx - Math.sin(beamRad)*3);
+  ctx.lineTo(ppx+sinA*totalLen + Math.cos(beamRad)*(3+wAtEnd), ppy+6+cosA*totalLen-Math.sin(beamRad)*(3+wAtEnd));
+  ctx.strokeStyle='rgba(255,193,7,0.12)'; ctx.lineWidth=0.8; ctx.stroke();
+
+  // Center ray
+  ctx.beginPath(); ctx.moveTo(ppx,ppy+6);
+  ctx.lineTo(ppx+sinA*totalLen, ppy+6+cosA*totalLen);
+  ctx.strokeStyle='rgba(255,193,7,0.5)'; ctx.setLineDash([4,5]); ctx.lineWidth=1.2; ctx.stroke(); ctx.setLineDash([]);
+
+  // Focal point marker ★
+  const fpx=ppx+sinA*focalPx, fpy=ppy+6+cosA*focalPx;
+  ctx.beginPath(); ctx.arc(fpx,fpy,5,0,Math.PI*2);
+  ctx.fillStyle='#00ffff'; ctx.fill();
+  ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle='rgba(0,255,255,0.9)'; ctx.font='bold 8px Space Mono'; ctx.textAlign='left';
+  ctx.fillText('F='+focalDepthCm.toFixed(0)+'cm', fpx+7, fpy+4);
+
+  // Position label
+  ctx.fillStyle='rgba(255,193,7,0.9)'; ctx.font='7px Space Mono'; ctx.textAlign='center';
+  ctx.fillText(probeX.toFixed(1)+'cm | '+probeBeamAngle.toFixed(0)+'°', ppx, ppy-10);
+
+  // Redraw Doppler overlay if we have cached data
+  if(lastDopplerData) drawDopplerGeometryOverlay(lastDopplerData);
+}
+
+// ── A-mode ────────────────────────────────────────────────────────────────────
+async function loadAmode(){
+  const d=await api('/us/amode'); if(!d) return;
+  drawAmode(d);
+}
+function drawAmode(d){
+  const canvas=document.getElementById('canvas-amode');
+  canvas.width=canvas.offsetWidth||500; canvas.height=canvas.offsetHeight||200;
+  const ctx=canvas.getContext('2d');
+  if(chartAmode){chartAmode.destroy();chartAmode=null;}
+
+  const rf=d.rf_line||[], depth=d.depth_cm||[], envelope=d.envelope||[];
+  const focalCm=d.focal_depth_cm||8;
+  const axRes=d.axial_res_cm||0.1;
+
+  // Focal-zone annotation line
+  const annotations={};
+  annotations.focalLine={
+    type:'line',
+    xMin:focalCm,xMax:focalCm,
+    borderColor:'rgba(0,255,255,0.7)',
+    borderWidth:2,
+    borderDash:[5,4],
+    label:{content:'Focal '+focalCm+'cm',display:true,
+           color:'#00ffff',font:{size:9,family:'Space Mono'},position:'start'}
+  };
+
+  chartAmode=new Chart(ctx,{
+    type:'line',
+    data:{labels:depth.map(v=>v.toFixed(1)), datasets:[
+      {label:'RF Echo',data:rf,
+       borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,0.06)',
+       borderWidth:1.5,pointRadius:0,fill:true,tension:0},
+      {label:'Envelope',data:envelope,
+       borderColor:'#ffc107',backgroundColor:'rgba(255,193,7,0.08)',
+       borderWidth:2.5,pointRadius:0,fill:true,tension:0.2}
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:0},
+      scales:{
+        x:{title:{display:true,text:'Depth (cm)',color:'#8892b0'},
+           ticks:{color:'#8892b0',maxTicksLimit:12},grid:{color:'rgba(42,45,85,0.4)'}},
+        y:{title:{display:true,text:'Amplitude',color:'#8892b0'},
+           ticks:{color:'#8892b0'},grid:{color:'rgba(42,45,85,0.4)'},min:-0.3,max:1.1}
+      },
+      plugins:{
+        legend:{labels:{color:'#aab0cc',font:{size:10}}},
+        tooltip:{callbacks:{label:c=>`${c.dataset.label} @${c.label}cm: ${c.parsed.y.toFixed(3)}`}},
+        annotation:{annotations}
+      }
+    }
+  });
+}
+
+// ── B-mode ────────────────────────────────────────────────────────────────────
+async function runBmodeLive(){
+  const d=await api('/us/bmode?steps=64'); if(!d) return;
+  drawBmode(d);
+}
+async function runBmodeFull(){
+  document.getElementById('loading-bmode').classList.add('show');
+  toast('Running full B-mode sweep…','#ffc107');
+  const d=await api('/us/bmode?steps=128&focal_depth_cm='+usParams.focal_depth_cm);
+  document.getElementById('loading-bmode').classList.remove('show');
+  if(!d) return;
+  drawBmode(d);
+  toast('B-mode complete','#00ff88');
+}
+function drawBmode(d){
+  const canvas=document.getElementById('canvas-bmode');
+  canvas.width=canvas.offsetWidth||500; canvas.height=canvas.offsetHeight||220;
+  const ctx=canvas.getContext('2d');
+  const img=d.bmode_image; if(!img||!img.length) return;
+  const rows=img.length, cols=img[0]?.length||1;
+  const idata=ctx.createImageData(canvas.width,canvas.height);
+
+  for(let py=0;py<canvas.height;py++){
+    for(let px=0;px<canvas.width;px++){
+      const ry=Math.floor(py/canvas.height*rows);
+      const rx=Math.floor(px/canvas.width*cols);
+      const v=Math.min(1,Math.max(0,img[ry]?.[rx]||0));
+      // Bright teal-white B-mode palette
+      const L=Math.round(v*255);
+      const i=(py*canvas.width+px)*4;
+      idata.data[i]  =Math.round(L*0.45);   // R
+      idata.data[i+1]=Math.round(L*0.85);   // G  (bright green-cyan)
+      idata.data[i+2]=L;                     // B  (full blue)
+      idata.data[i+3]=255;
+    }
+  }
+  ctx.putImageData(idata,0,0);
+
+  // Focal zone line
+  const fd=d.focal_depth_cm||8;
+  const fy=fd/20*canvas.height;
+  ctx.beginPath(); ctx.moveTo(0,fy); ctx.lineTo(canvas.width,fy);
+  ctx.strokeStyle='rgba(0,255,255,0.35)'; ctx.lineWidth=1.5; ctx.setLineDash([6,5]); ctx.stroke(); ctx.setLineDash([]);
+  ctx.fillStyle='rgba(0,255,255,0.6)'; ctx.font='8px Space Mono'; ctx.textAlign='right';
+  ctx.fillText('Focal '+fd.toFixed(0)+'cm', canvas.width-4, fy-3);
+
+  // Current probe position line
+  const probeLineX=(probeX+9.5)/19*canvas.width;
+  ctx.beginPath(); ctx.moveTo(probeLineX,0); ctx.lineTo(probeLineX,canvas.height);
+  ctx.strokeStyle='rgba(255,193,7,0.5)'; ctx.lineWidth=2; ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+
+  // Axis labels
+  ctx.fillStyle='rgba(0,245,255,0.7)'; ctx.font='8px Space Mono'; ctx.textAlign='left';
+  ctx.fillText('← LATERAL →',6,canvas.height-6);
+  ctx.save(); ctx.rotate(-Math.PI/2); ctx.textAlign='left';
+  ctx.fillText('DEPTH →',-canvas.height+6,12); ctx.restore();
+
+  // Depth tick marks
+  [0,5,10,15,20].forEach(cm=>{
+    const y=cm/20*canvas.height;
+    ctx.fillStyle='rgba(0,245,255,0.4)'; ctx.font='7px Space Mono'; ctx.textAlign='right';
+    ctx.fillText(cm+'cm', canvas.width-3, y+8);
+  });
+}
+
+// ── Doppler ───────────────────────────────────────────────────────────────────
+async function loadDoppler(){
+  const d=await api('/us/doppler?vessel_id='+activeVesselId); if(!d) return;
+  lastDopplerData=d;
+  drawDoppler(d);
+}
+
+function drawDoppler(d){
+  const shift=d.peak_shift_hz??0;
+  const vel  =d.estimated_velocity_m_s??0;
+  const theta=d.theta_deg??0;
+  const inGate=d.in_gate??false;
+  const cosV=(d.cos_theta??0);
+
+  // ── Metric panel ──────────────────────────────────────────────────────
+  const setEl=(id,txt,col)=>{
+    const e=document.getElementById(id); if(!e)return;
+    e.textContent=txt; if(col) e.style.color=col;
+  };
+
+  const shiftSign = shift>=0? '+':'';
+  setEl('d-shift', shiftSign+Math.round(shift)+' Hz',
+        Math.abs(shift)<50?'#aaa': shift>0?'#ff6b6b':'#6baaff');
+  setEl('d-vel', (vel>=0?'+':'')+vel.toFixed(3)+' m/s',
+        Math.abs(vel)<0.05?'#aaa': vel>0?'#ff6b6b':'#6baaff');
+  setEl('d-theta', theta.toFixed(1)+'°',
+        theta>80?'#ff3355': theta>50?'#ffc107':'#00ff88');
+  setEl('d-cos', 'cos='+cosV.toFixed(3),
+        Math.abs(cosV)<0.05?'#ff3355':'#00d4ff');
+  setEl('d-gate', inGate?'✓ IN GATE':'✗ NO SIGNAL',
+        inGate?'#00ff88':'#ff3355');
+
+  // ── Spectrum chart ────────────────────────────────────────────────────
+  const canvas=document.getElementById('canvas-doppler');
+  canvas.width=canvas.offsetWidth||500; canvas.height=canvas.offsetHeight||200;
+  const ctx=canvas.getContext('2d');
+  if(chartDoppler){chartDoppler.destroy();chartDoppler=null;}
+
+  const freqs=d.frequencies||[], power=d.power||[];
+  const fkHz=freqs.map(f=>(f/1000).toFixed(2));
+
+  // physics explanation in title
+  let note='';
+  if(!inGate)       note=' ⚠ Beam not near vessel';
+  else if(theta>80) note=' ⊥ Perpendicular → Δf≈0';
+  else if(shift>0)  note=' ↑ Flow TOWARD probe';
+  else              note=' ↓ Flow AWAY from probe';
+
+  const titleTxt=`[${d.vessel_name||''}]  Δf=${shiftSign+Math.round(shift)} Hz  |  v≈${(vel>=0?'+':'')+vel.toFixed(3)} m/s  |  θ=${theta.toFixed(1)}°${note}`;
+
+  // Color: red if perpendicular/out-of-gate, blue if away, red/orange if toward
+  const specColor=(!inGate||theta>80)?'rgba(255,51,85,0.8)':
+                  (shift>=0?'rgba(255,120,120,0.9)':'rgba(100,170,255,0.9)');
+  const specBg=(!inGate||theta>80)?'rgba(255,51,85,0.06)':
+               (shift>=0?'rgba(255,120,120,0.08)':'rgba(100,170,255,0.08)');
+
+  // When no signal, draw a prominent flat-zero baseline annotation
+  const dopplerAnnotations = {};
+  if(!inGate || theta > 80){
+    dopplerAnnotations.zeroLine = {
+      type:'line', yMin:0, yMax:0,
+      borderColor:'rgba(0,245,255,0.5)', borderWidth:1.5,
+      borderDash:[6,4],
+      label:{content:'No Doppler signal — flat zero',display:true,
+             color:'rgba(0,245,255,0.7)',font:{size:8,family:'Space Mono'},
+             position:'center'}
+    };
+  }
+
+  chartDoppler=new Chart(ctx,{
+    type:'line',
+    data:{labels:fkHz, datasets:[{
+      label:'Power Spectrum',data:power,
+      borderColor:specColor,backgroundColor:specBg,
+      borderWidth:2.5,pointRadius:0,fill:true,tension:0.3
+    }]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:{duration:0},
+      plugins:{
+        legend:{display:false},
+        title:{display:true,text:titleTxt,
+               color:(!inGate||theta>80)?'#ff3355':(shift>=0?'#ff8888':'#88aaff'),
+               font:{size:9,family:'Space Mono'}},
+        annotation:{annotations:dopplerAnnotations}
+      },
+      scales:{
+        x:{title:{display:true,text:'Freq Shift (kHz) — negative=away, positive=toward',color:'#8892b0'},
+           ticks:{color:'#8892b0',maxTicksLimit:9},grid:{color:'rgba(42,45,85,0.4)'}},
+        y:{title:{display:true,text:'Power',color:'#8892b0'},
+           ticks:{color:'#8892b0'},grid:{color:'rgba(42,45,85,0.4)'},min:0,max:1.1}
+      }
+    }
+  });
+
+  // Redraw phantom overlay
+  drawPhantom();
+}
+
+function drawDopplerGeometryOverlay(d){
+  const canvas=document.getElementById('us-phantom');
+  if(!canvas||!d) return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  const ox=8, oy=H-72, len=24;
+
+  ctx.save();
+  ctx.fillStyle='rgba(5,6,20,0.82)';
+  ctx.strokeStyle='rgba(42,45,85,0.9)'; ctx.lineWidth=1;
+  const bw=72, bh=70;
+  ctx.beginPath(); ctx.roundRect(ox-2,oy-2,bw,bh,4);
+  ctx.fill(); ctx.stroke();
+
+  const cx2=ox+bw/2, cy2=oy+bh/2-4;
+  ctx.beginPath(); ctx.arc(cx2,cy2,3,0,Math.PI*2);
+  ctx.fillStyle='#ffc107'; ctx.fill();
+
+  if(d.beam_dir){
+    const [bx,by]=d.beam_dir;
+    ctx.beginPath(); ctx.moveTo(cx2,cy2);
+    ctx.lineTo(cx2+bx*len, cy2+by*len);
+    ctx.strokeStyle='#00d4ff'; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.fillStyle='#00d4ff'; ctx.font='7px Space Mono'; ctx.textAlign='center';
+    ctx.fillText('BEAM',cx2+bx*(len+9),cy2+by*(len+9)+3);
+  }
+  if(d.flow_dir&&d.flow_dir.length>=2){
+    const [fx,fy]=d.flow_dir;
+    ctx.beginPath(); ctx.moveTo(cx2,cy2);
+    ctx.lineTo(cx2+fx*len, cy2+fy*len);
+    ctx.strokeStyle='#ff3355'; ctx.lineWidth=2.5; ctx.stroke();
+    ctx.fillStyle='#ff3355'; ctx.font='7px Space Mono'; ctx.textAlign='center';
+    ctx.fillText('FLOW',cx2+fx*(len+9),cy2+fy*(len+9)+3);
+  }
+  const theta=d.theta_deg??0;
+  const tc=theta>75?'#ff3355':theta>45?'#ffc107':'#00ff88';
+  ctx.fillStyle=tc; ctx.font='bold 9px Space Mono'; ctx.textAlign='center';
+  ctx.fillText('θ='+theta.toFixed(0)+'°', cx2, oy+bh-6);
+  ctx.restore();
+}
+
+// ── Probe absolute positioning ────────────────────────────────────────────────
+async function setProbeAbsolute(x_cm, angle_deg, focal_cm){
+  if(x_cm!==null){
+    probeX=Math.max(-9.5,Math.min(9.5,x_cm));
+    document.getElementById('us-probe-x').textContent=probeX.toFixed(1)+' cm';
+    document.getElementById('us-probe-slider').value=Math.round(probeX*10);
+  }
+  if(angle_deg!==null){
+    probeBeamAngle=Math.max(-45,Math.min(45,angle_deg));
+    document.getElementById('us-beam-angle').textContent=probeBeamAngle.toFixed(0)+'°';
+    document.getElementById('us-beam-slider').value=probeBeamAngle;
+  }
+  if(focal_cm!==null&&focal_cm!==undefined){
+    window._focalDepthCm=Math.max(1,Math.min(18,focal_cm));
+    document.getElementById('us-focal-val').textContent=window._focalDepthCm.toFixed(1)+' cm';
+    document.getElementById('us-focal-slider').value=window._focalDepthCm;
+  }
+  drawPhantom();
+  drawUSWaveform();
+  clearTimeout(usRefreshTimer);
+  usRefreshTimer=setTimeout(async()=>{
+    const body={x_cm:probeX, beam_angle:probeBeamAngle};
+    if(window._focalDepthCm) body.focal_depth=window._focalDepthCm;
+    await api('/us/probe/set','POST',body);
+    await loadAmode();
+    await runBmodeLive();
+    await loadDoppler();
+  },80);
+}
+
+// ── Mouse drag / scroll / hover / click ──────────────────────────────────────
+(function setupProbeMouseDrag(){
+  const canvas=document.getElementById('us-phantom');
+  let dragging=false, dragStartX=0, dragStartProbeX=0;
+
+  canvas.addEventListener('mousedown',e=>{
+    dragging=true; dragStartX=e.clientX; dragStartProbeX=probeX; e.preventDefault();
+  });
+
+  canvas.addEventListener('mousemove',e=>{
+    // Drag
+    if(dragging){
+      const rect=canvas.getBoundingClientRect();
+      const dx=(e.clientX-dragStartX)/rect.width*20;
+      const newX=Math.max(-9.5,Math.min(9.5,dragStartProbeX+dx));
+      probeX=newX;
+      document.getElementById('us-probe-x').textContent=newX.toFixed(1)+' cm';
+      document.getElementById('us-probe-slider').value=Math.round(newX*10);
+      drawPhantom();
+    }
+
+    // Tooltip
+    if(!phantomData) return;
+    const rect=canvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)/rect.width, my=(e.clientY-rect.top)/rect.height;
+    const pcx=(mx-0.5)*20, pcy=(my-0.5)*20;
+    const tip=document.getElementById('phantom-tooltip');
+
+    // Check vessels first
+    for(const v of (phantomData.vessels||[])){
+      if(v.deleted) continue;
+      const [sx,sy]=[v.start[0],v.start[1]], [ex,ey]=[v.end[0],v.end[1]];
+      const len2=(ex-sx)**2+(ey-sy)**2;
+      const t=len2>0?Math.max(0,Math.min(1,((pcx-sx)*(ex-sx)+(pcy-sy)*(ey-sy))/len2)):0;
+      const near=[sx+t*(ex-sx),sy+t*(ey-sy)];
+      if(Math.sqrt((pcx-near[0])**2+(pcy-near[1])**2)<v.radius_cm*2.5){
+        const bdx2=Math.sin(probeBeamAngle*Math.PI/180);
+        const bdy2=Math.cos(probeBeamAngle*Math.PI/180);
+        const fr2=v.direction_deg*Math.PI/180;
+        const dot2=Math.abs(bdx2*Math.cos(fr2)+bdy2*Math.sin(fr2));
+        const theta2=Math.round(Math.acos(Math.min(1,dot2))*180/Math.PI);
+        const fd2=2*params.frequency_hz*v.velocity_m_s*Math.cos(theta2*Math.PI/180)/1540;
+        tip.style.display='block';
+        tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-8)+'px';
+        tip.innerHTML=`<b style="color:#ff5577">${v.name}</b><br>`+
+          `Velocity: <b style="color:#ffc107">${v.velocity_m_s} m/s</b><br>`+
+          `Flow dir: <b>${v.direction_deg}°</b><br>`+
+          `Radius: <b>${v.radius_cm} cm</b><br>`+
+          `θ with beam: <b style="color:${theta2>75?'#ff3355':theta2>45?'#ffc107':'#00ff88'}">${theta2}°</b><br>`+
+          `Δf ≈ <b style="color:#00d4ff">${(fd2/1000).toFixed(2)} kHz</b><br>`+
+          `<span style="color:#4a5280;font-size:8px">Click to select</span>`;
+        return;
+      }
+    }
+
+    // Check shapes
+    let hitS=null;
+    for(const s of [...(phantomData.shapes||[])].reverse()){
+      if(s.echogenicity<=0) continue;
+      const dx2=pcx-s.center[0], dy2=pcy-s.center[1];
+      const a=Math.max(s.semi_axes[0],0.01), b2=Math.max(s.semi_axes[1],0.01);
+      if((dx2/a)**2+(dy2/b2)**2<=1.1){hitS=s;break;}
+    }
+    if(hitS){
+      const canDelete=hitS.shape_id>=2;
+      tip.style.display='block';
+      tip.style.left=(e.clientX+14)+'px'; tip.style.top=(e.clientY-8)+'px';
+      tip.innerHTML=`<b style="color:#ffc107">${hitS.name}</b>`+
+        ` <span style="color:#4a5280">[${hitS.tissue}]</span><br>`+
+        `Z: <b>${(hitS.acoustic_impedance/1e6).toFixed(2)}</b> MRayl<br>`+
+        `Att: <b>${hitS.attenuation_coeff}</b> dB/cm/MHz<br>`+
+        `Speed: <b>${hitS.sound_speed}</b> m/s<br>`+
+        `Density: <b>${hitS.density}</b> kg/m³<br>`+
+        `Echogenicity: <b style="color:#00d4ff">${hitS.echogenicity.toFixed(2)}</b><br>`+
+        `<span style="color:#4a5280;font-size:8px">Click to edit${canDelete?' | Del to remove':''}</span>`;
+    } else {
+      tip.style.display='none';
+    }
+  });
+
+  canvas.addEventListener('mouseup',async e=>{
+    if(!dragging) return; dragging=false;
+    await api('/us/probe/set','POST',{x_cm:probeX,beam_angle:probeBeamAngle,
+                                      focal_depth:window._focalDepthCm||8});
+    await loadAmode(); await runBmodeLive(); await loadDoppler();
+  });
+  canvas.addEventListener('mouseleave',e=>{
+    if(dragging){
+      dragging=false;
+      api('/us/probe/set','POST',{x_cm:probeX,beam_angle:probeBeamAngle,
+                                   focal_depth:window._focalDepthCm||8})
+        .then(()=>{loadAmode(); runBmodeLive();});
+    }
+    document.getElementById('phantom-tooltip').style.display='none';
+  });
+
+  // Scroll = fine position
+  canvas.addEventListener('wheel',e=>{
+    e.preventDefault();
+    const newX=Math.max(-9.5,Math.min(9.5,probeX+(e.deltaY>0?-0.25:0.25)));
+    setProbeAbsolute(newX,null,null);
+  },{passive:false});
+
+  // Click = select vessel or open shape editor
+  canvas.addEventListener('click',e=>{
+    if(!phantomData) return;
+    const rect=canvas.getBoundingClientRect();
+    const mx=(e.clientX-rect.left)/rect.width, my=(e.clientY-rect.top)/rect.height;
+    const pcx=(mx-0.5)*20, pcy=(my-0.5)*20;
+    // Vessel click
+    for(const v of (phantomData.vessels||[])){
+      if(v.deleted) continue;
+      const [sx,sy]=[v.start[0],v.start[1]],[ex,ey]=[v.end[0],v.end[1]];
+      const len2=(ex-sx)**2+(ey-sy)**2;
+      const t=len2>0?Math.max(0,Math.min(1,((pcx-sx)*(ex-sx)+(pcy-sy)*(ey-sy))/len2)):0;
+      const near=[sx+t*(ex-sx),sy+t*(ey-sy)];
+      if(Math.sqrt((pcx-near[0])**2+(pcy-near[1])**2)<v.radius_cm*3){
+        selectVesselById(v.vessel_id); return;
+      }
+    }
+    // Shape click
+    for(const s of [...(phantomData.shapes||[])].reverse()){
+      if(s.echogenicity<=0) continue;
+      const dx2=pcx-s.center[0], dy2=pcy-s.center[1];
+      const a=Math.max(s.semi_axes[0],0.01), b2=Math.max(s.semi_axes[1],0.01);
+      if((dx2/a)**2+(dy2/b2)**2<=1.1){openShapeEditor(s);return;}
+    }
+  });
+})();
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+function handleUSKeyboard(e){
+  if(['ArrowLeft','ArrowRight'].includes(e.key)){
+    e.preventDefault();
+    setProbeAbsolute(probeX+(e.key==='ArrowRight'?0.3:-0.3), null, null);
+  }
+  if(['ArrowUp','ArrowDown'].includes(e.key)){
+    e.preventDefault();
+    const fd=(window._focalDepthCm||8)+(e.key==='ArrowUp'?-0.5:0.5);
+    setProbeAbsolute(null,null,fd);
+  }
+  if(e.key==='a'||e.key==='A'){ e.preventDefault(); setProbeAbsolute(null,Math.max(-45,probeBeamAngle-2),null); }
+  if(e.key==='d'||e.key==='D'){ e.preventDefault(); setProbeAbsolute(null,Math.min(45,probeBeamAngle+2),null); }
+}
+
+// ── Vessel list ───────────────────────────────────────────────────────────────
+function renderVesselList(){
+  const el=document.getElementById('vessel-list'); if(!el) return;
+  const vessels=(phantomData?.vessels||[]).filter(v=>!v.deleted);
+  if(!vessels.length){el.innerHTML='<div class="section-note" style="color:#555">No vessels</div>';return;}
+  el.innerHTML=vessels.map(v=>{
+    const isA=v.vessel_id===activeVesselId;
+    return `<div class="entity-item" style="cursor:pointer;${isA?'border-color:#ff3355;background:rgba(255,51,85,0.07)':''}"
+         onclick="selectVesselById(${v.vessel_id})">
+      <div>
+        <div class="entity-name" style="color:${isA?'#ff5577':'#ff8c8c'}">${v.name}</div>
+        <div class="entity-info">v=${v.velocity_m_s}m/s | θ=${v.direction_deg}° | r=${v.radius_cm}cm</div>
+      </div>
+      <span class="pulse-dot" style="color:#ff3355"></span>
+    </div>`;
+  }).join('');
+}
+
+function selectVesselById(id){
+  activeVesselId=id;
+  const v=(phantomData?.vessels||[]).find(v=>v.vessel_id===id&&!v.deleted);
+  if(v){
+    document.getElementById('vessel-controls').style.display='';
+    document.getElementById('vessel-ctrl-title').textContent=v.name;
+    document.getElementById('vessel-vel-slider').value=Math.round(v.velocity_m_s*100);
+    document.getElementById('us-vel').textContent=v.velocity_m_s.toFixed(2)+' m/s';
+    document.getElementById('vessel-dir-slider').value=v.direction_deg;
+    document.getElementById('us-dir').textContent=v.direction_deg.toFixed(0)+'°';
+    document.getElementById('vessel-radius-slider').value=Math.round(v.radius_cm*100);
+    document.getElementById('us-radius').textContent=v.radius_cm.toFixed(2)+' cm';
+  }
+  renderVesselList(); drawPhantom(); loadDoppler();
+}
+
+async function updateActiveVessel(type,val,dispId,fmt){
+  document.getElementById(dispId).textContent=fmt(val);
+  await api('/us/vessel','POST',{vessel_id:activeVesselId,[type]:val});
+  if(phantomData?.vessels){
+    const v=phantomData.vessels.find(v=>v.vessel_id===activeVesselId);
+    if(v){
+      if(type==='velocity')  v.velocity_m_s=val;
+      if(type==='direction') v.direction_deg=val;
+      if(type==='radius_cm') v.radius_cm=val;
+    }
+  }
+  drawPhantom(); loadDoppler();
+}
+
+async function deleteActiveVessel(){
+  if(!confirm('Remove this vessel?')) return;
+  await api('/us/vessel/delete','POST',{vessel_id:activeVesselId});
+  if(phantomData?.vessels){
+    const v=phantomData.vessels.find(v=>v.vessel_id===activeVesselId);
+    if(v) v.deleted=true;
+  }
+  const rem=(phantomData?.vessels||[]).filter(v=>!v.deleted);
+  if(rem.length) selectVesselById(rem[0].vessel_id);
+  else{ document.getElementById('vessel-controls').style.display='none'; activeVesselId=0; }
+  renderVesselList(); drawPhantom(); loadDoppler();
+  toast('Vessel removed','#ffc107');
+}
+
+function toggleAddVesselForm(){
+  const f=document.getElementById('add-vessel-form');
+  f.style.display=f.style.display==='none'?'block':'none';
+}
+
+async function submitAddVessel(){
+  const sx=parseFloat(document.getElementById('av-sx').value);
+  const sy=parseFloat(document.getElementById('av-sy').value);
+  const ex=parseFloat(document.getElementById('av-ex').value);
+  const ey=parseFloat(document.getElementById('av-ey').value);
+  const r=parseFloat(document.getElementById('av-r').value);
+  const vel=parseFloat(document.getElementById('av-vel').value);
+  const dir=parseFloat(document.getElementById('av-dir').value);
+  const name=document.getElementById('av-name').value||'';
+  const result=await api('/us/vessel/add','POST',
+    {start_x:sx,start_y:sy,end_x:ex,end_y:ey,radius_cm:r,velocity_m_s:vel,direction_deg:dir,name});
+  if(result?.error){toast(result.error,'#ff3355');return;}
+  if(phantomData){if(!phantomData.vessels)phantomData.vessels=[];phantomData.vessels.push(result);}
+  toggleAddVesselForm(); renderVesselList(); drawPhantom(); selectVesselById(result.vessel_id);
+  toast('Vessel added','#00ff88');
+}
+
+// ── Shape editor ──────────────────────────────────────────────────────────────
+function openShapeEditor(shape){
+  editingShapeId=shape.shape_id;
+  document.getElementById('us-shape-editor').style.display='';
+  const canDel=shape.shape_id>=2;
+  document.getElementById('us-shape-fields').innerHTML=`
+    <div class="info-row"><span class="info-key">Shape</span><span class="info-val" style="color:#ffc107">${shape.name}</span></div>
+    <div class="info-row"><span class="info-key">Tissue</span><span class="info-val" style="color:#00d4ff">${shape.tissue}</span></div>
+    <div class="ctrl-row" style="margin-top:7px">
+      <div class="ctrl-label"><span class="ctrl-name">Impedance Z (MRayl)</span></div>
+      <input type="number" class="num-input" id="edit-z" value="${(shape.acoustic_impedance/1e6).toFixed(3)}" step="0.05" min="0.1"/>
+      <div class="section-note">High Z → strong reflection at boundary</div>
+    </div>
+    <div class="ctrl-row" style="margin-top:5px">
+      <div class="ctrl-label"><span class="ctrl-name">Attenuation (dB/cm/MHz)</span></div>
+      <input type="number" class="num-input" id="edit-att" value="${shape.attenuation_coeff}" step="0.05" min="0"/>
+      <div class="section-note">High att → beam dies faster through this tissue</div>
+    </div>
+    <div class="ctrl-row" style="margin-top:5px">
+      <div class="ctrl-label"><span class="ctrl-name">Sound Speed (m/s)</span></div>
+      <input type="number" class="num-input" id="edit-speed" value="${shape.sound_speed}" step="5" min="100"/>
+    </div>
+    <div class="ctrl-row" style="margin-top:5px">
+      <div class="ctrl-label"><span class="ctrl-name">Echogenicity (0=dark, 1=bright)</span></div>
+      <input type="number" class="num-input" id="edit-echo" value="${shape.echogenicity}" step="0.05" min="0" max="1"/>
+      <div class="section-note">Tumor = bright (0.7+), CSF = dark (near 0), Bone = very bright</div>
+    </div>
+    ${canDel?`<button class="btn btn-danger btn-sm" style="width:100%;margin-top:8px"
+      onclick="deleteThisShape(${shape.shape_id})">🗑 Delete This Shape</button>`:'<div class="section-note" style="margin-top:6px;color:#555">Skull and brain tissue cannot be deleted</div>'}`;
+}
+
+async function applyShapeEdit(){
+  const z=parseFloat(document.getElementById('edit-z').value)*1e6;
+  const att=parseFloat(document.getElementById('edit-att').value);
+  const speed=parseFloat(document.getElementById('edit-speed').value);
+  const echo=parseFloat(document.getElementById('edit-echo').value);
+  await api('/us/shape','POST',{shape_id:editingShapeId,
+    params:{acoustic_impedance:z,attenuation_coeff:att,sound_speed:speed,echogenicity:echo}});
+  if(phantomData?.shapes){
+    const s=phantomData.shapes.find(s=>s.shape_id===editingShapeId);
+    if(s){s.acoustic_impedance=z;s.attenuation_coeff=att;s.sound_speed=speed;s.echogenicity=echo;}
+  }
+  closeShapeEditor();
+  await loadPhantom(); await loadAmode(); await runBmodeLive();
+  toast('Shape updated','#00ff88');
+}
+
+async function deleteThisShape(shape_id){
+  if(!confirm('Delete this shape from the phantom?')) return;
+  const r=await api('/us/shape/delete','POST',{shape_id});
+  if(r?.error){toast(r.error,'#ff3355');return;}
+  if(phantomData?.shapes){
+    phantomData.shapes=phantomData.shapes.filter(s=>s.shape_id!==shape_id);
+  }
+  closeShapeEditor();
+  await loadPhantom(); await loadAmode(); await runBmodeLive();
+  toast('Shape deleted','#ffc107');
+}
+
+function closeShapeEditor(){document.getElementById('us-shape-editor').style.display='none';editingShapeId=null;}
+
+// ════════════════════════════════════
+// RADAR SIMULATOR — SELF-CONTAINED (no backend)
+// ════════════════════════════════════
+
+// ── Simulator state ──────────────────────────────────────────────────────────
+const RS_DEFAULTS = {
+  beamWidth: 20,
+  scanSpeed: 60,
+  snr: 20,
+  isPaused: false,
+  // ── 7 new physics parameters ──
+  maxRange: 2000,          // m  — detection cutoff distance
+  frequency: 9.5,          // GHz — X-band radar; affects range resolution via c/2B
+  txPower: 0,              // dB  — transmit power boost added to signal strength
+  pulseWidth: 1.0,         // µs  — range resolution = c*τ/2; narrower = better res but lower SNR
+  prf: 1000,               // Hz  — Pulse Repetition Frequency; sets max unambiguous range
+  clutterLevel: -40,       // dB  — sea/ground clutter noise floor addition
+  rainAtten: 0,            // dB/km — rain attenuation (two-way loss = 2 * rainAtten * dist_km)
+  objects: [
+    { id:1, angle:45,  distance:600,  size:8 },
+    { id:2, angle:160, distance:1100, size:5 },
+    { id:3, angle:270, distance:800,  size:12 },
+  ]
+};
+let rsState = JSON.parse(JSON.stringify(RS_DEFAULTS));
+let rsData  = null;                   // last tick output
+let rsSimulator = null;               // Radar_Simulator instance
+let rsAnimId = null;                  // requestAnimationFrame handle
+let rsLastTs = null;                  // for dt calculation
+let rsDragRef = null;                 // { id } while dragging
+let rsSignalHistory = [];             // [{ time, power, phase, bodyId }]
+const RS_MAX_TIME_MS = 8000;
+
+// ── Radar_Simulator class (ported from provided source) ─────────────────────
+class Radar_Simulator {
+  constructor() {
+    this.phase = 'SCANNING';
+    this.currentAngle = 0;
+    this.targetId = null;
+    this.dwellTimer = 0;
+    this.measuredSizes = {};
+    this.focusQueue = [];
+    this.focusQueueIndex = 0;
+    this.confirmedTargets = new Map();
+    this.effectiveBeamWidth = 15;
+  }
+
+  tick(dt, state) {
+    const objects   = state.objects || [];
+    const baseSpeed = state.scanSpeed || 60;
+    const maxRange  = state.maxRange || 2000;
+    const snr       = state.snr ?? 20;
+
+    if (this.phase === 'SCANNING') {
+      const userBw = state.beamWidth || 15;
+      this.effectiveBeamWidth = userBw;
+      const speedScale  = this.effectiveBeamWidth / 15;
+      const actualSpeed = baseSpeed * speedScale;
+      this.currentAngle = (this.currentAngle + actualSpeed * dt) % 360;
+
+      const detectedInBeam = objects.filter(obj =>
+        this._isObjectInBeam(obj, this.currentAngle, this.effectiveBeamWidth, maxRange, snr, state)
+      );
+      if (detectedInBeam.length > 0) {
+        const avgAngle = detectedInBeam.reduce((s,o) => s + o.angle, 0) / detectedInBeam.length;
+        const isQueued = this.focusQueue.some(q => Math.abs(q.angle - avgAngle) < this.effectiveBeamWidth / 2);
+        const isConfirmed = Array.from(this.confirmedTargets.values()).some(c =>
+          Math.abs(c.angle - avgAngle) < this.effectiveBeamWidth / 2);
+        if (!isQueued && !isConfirmed) {
+          this.focusQueue.push({ angle: avgAngle, isBlob: true });
+        }
+      }
+
+      if (this.focusQueue.length > 0) {
+        const first = this.focusQueue[0];
+        let diff = this.currentAngle - first.angle;
+        if (diff > 180) diff -= 360;
+        if (diff < -180) diff += 360;
+        if (diff > userBw / 2) {
+          this.phase = 'FOCUSING';
+          this.focusQueueIndex = 0;
+          this.dwellTimer = 0;
+        }
+      }
+
+    } else if (this.phase === 'FOCUSING') {
+      this.effectiveBeamWidth = 3;
+      if (this.focusQueueIndex >= this.focusQueue.length) {
+        this.phase = 'SCANNING';
+        this.focusQueue = [];
+        this.focusQueueIndex = 0;
+        return this._generateData(state, objects, maxRange);
+      }
+      const task = this.focusQueue[this.focusQueueIndex];
+      this.currentAngle = task.angle;
+      if (this.dwellTimer <= 0) {
+        const subs = objects.filter(obj => this._isObjectInBeam(obj, task.angle, 3, maxRange, snr, state));
+        if (task.isBlob && subs.length > 1) {
+          const newTasks = subs.map(t => ({ angle: t.angle, id: t.id, isBlob: false }));
+          this.focusQueue.splice(this.focusQueueIndex, 1, ...newTasks);
+          this.targetId = newTasks[0].id ?? null;
+          this.dwellTimer = 1.5;
+        } else if (subs.length > 0) {
+          this.targetId = subs[0].id;
+          this.dwellTimer = 1.5;
+        } else {
+          this.focusQueueIndex++;
+          this.dwellTimer = 0;
+        }
+      } else {
+        this.dwellTimer -= dt;
+        if (this.dwellTimer <= 0) {
+          const t = objects.find(o => o.id === this.targetId);
+          if (t) {
+            this.measuredSizes[t.id] = t.size;
+            this.confirmedTargets.set(t.id, { ...t, time: Date.now() });
+          }
+          this.focusQueueIndex++;
+          this.targetId = null;
+        }
+      }
+    }
+
+    // Cleanup stale confirmed targets
+    const beamThreshold = (state.beamWidth || 15) / 2;
+    const noiseFloorDb = -80;
+    const effectiveSNR = this._effectiveSNR(state);
+    const detectionThreshold = noiseFloorDb + (40 - effectiveSNR);
+    for (const [id, c] of this.confirmedTargets) {
+      const obj = objects.find(o => o.id === id);
+      if (!obj) { this.confirmedTargets.delete(id); continue; }
+      const vf = this._visibleFraction(obj.distance, obj.size, maxRange);
+      const r4 = Math.pow(Math.max(0.1, obj.distance/100), 4);
+      const s2 = Math.pow(obj.size/5, 2);
+      const txBoost = state.txPower || 0;
+      const rainLoss = this._rainLoss(obj.distance, state);
+      const peakDb = 10 * Math.log10(Math.max(1e-12, (s2*vf)/r4)) + txBoost - rainLoss;
+      if (Math.abs(obj.angle - c.angle) > beamThreshold ||
+          Math.abs(obj.distance - c.distance) > 50 ||
+          obj.size !== c.size ||
+          peakDb <= detectionThreshold) {
+        this.confirmedTargets.delete(id);
+      }
+    }
+    return this._generateData(state, objects, maxRange);
+  }
+
+  _visibleFraction(distance, size, maxRange) {
+    const r = size / 2, R = maxRange, d = distance;
+    if (d + r <= R) return 1.0;
+    if (d - r >= R) return 0.0;
+    try {
+      const p1 = r*r*Math.acos((d*d+r*r-R*R)/(2*d*r));
+      const p2 = R*R*Math.acos((d*d+R*R-r*r)/(2*d*R));
+      const p3 = 0.5*Math.sqrt(Math.max(0,(-d+r+R)*(d+r-R)*(d-r+R)*(d+r+R)));
+      return Math.max(0, Math.min(1, (p1+p2-p3)/(Math.PI*r*r)));
+    } catch(e) { return d < R ? 1.0 : 0.0; }
+  }
+
+  // ── New physics helpers ──────────────────────────────────────────────────────
+  _effectiveSNR(state) {
+    // Base SNR slider, boosted by txPower, degraded by clutter and rain
+    const base    = state.snr ?? 20;
+    const txBoost = state.txPower || 0;
+    // Pulse width: longer pulse = more energy = +SNR (reference 1µs)
+    const pw      = state.pulseWidth || 1.0;
+    const pwGain  = 10 * Math.log10(Math.max(0.01, pw));  // >1µs adds SNR, <1µs subtracts
+    // Clutter: raises effective noise floor
+    const clutterFloor = state.clutterLevel ?? -40;        // dBc; -40=calm, 0=bad
+    const clutterPenalty = Math.max(0, clutterFloor + 60) / 4; // 0 at -60, 15 at 0
+    return base + txBoost + pwGain - clutterPenalty;
+  }
+
+  _rainLoss(distanceM, state) {
+    // Two-way rain attenuation: loss = 2 * atten(dB/km) * dist_km
+    const atten = state.rainAtten || 0;
+    return 2 * atten * (distanceM / 1000);
+  }
+
+  _rangeResolution(state) {
+    // Range resolution = c * τ / 2   (c=3e8 m/s, τ in seconds)
+    const c = 3e8;
+    const tau = (state.pulseWidth || 1.0) * 1e-6;
+    return (c * tau) / 2;  // metres
+  }
+
+  _maxUnambiguousRange(state) {
+    // R_max_unambiguous = c / (2 * PRF)
+    const c = 3e8;
+    const prf = state.prf || 1000;
+    return c / (2 * prf);
+  }
+
+  _isObjectInBeam(obj, beamAngle, beamWidth, maxRange, snr, state) {
+    const beamHalf = beamWidth / 2;
+    const objAngHalf = (obj.size / (obj.distance||1)) * (180/Math.PI) / 2;
+    let diff = obj.angle - beamAngle;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    if (Math.abs(diff) > beamHalf + objAngHalf) return false;
+    const vf = this._visibleFraction(obj.distance, obj.size, maxRange);
+    if (vf <= 0) return false;
+    // PRF unambiguous range check
+    const rMaxPRF = this._maxUnambiguousRange(state||{});
+    if (obj.distance > rMaxPRF) return false;  // target is range-ambiguous
+    const r4 = Math.pow(Math.max(0.1, obj.distance/100), 4);
+    const s2 = Math.pow(obj.size/5, 2);
+    const txBoost = (state?.txPower) || 0;
+    const rainLoss = this._rainLoss(obj.distance, state||{});
+    const db = 10 * Math.log10(Math.max(1e-12, (s2*vf)/r4)) + txBoost - rainLoss;
+    const effSNR = this._effectiveSNR(state||{snr});
+    return db > (-80 + (40 - effSNR));
+  }
+
+  _generateData(state, objects, maxRange) {
+    const echoes = [];
+    const beamHalf = this.effectiveBeamWidth / 2;
+    const snr = state.snr ?? 20;
+    const effSNR = this._effectiveSNR(state);
+    const rMaxPRF = this._maxUnambiguousRange(state);
+    const rangeRes = this._rangeResolution(state);
+    for (const obj of objects) {
+      const objAngHalf = (obj.size / (obj.distance||1)) * (180/Math.PI) / 2;
+      let diff = obj.angle - this.currentAngle;
+      if (diff > 180) diff -= 360;
+      if (diff < -180) diff += 360;
+      const totalHalf = beamHalf + objAngHalf;
+      const vf = this._visibleFraction(obj.distance, obj.size, maxRange);
+      const ambiguous = obj.distance > rMaxPRF;
+      if (Math.abs(diff) <= totalHalf && vf > 0) {
+        const r4 = Math.pow(Math.max(0.1, obj.distance/100), 4);
+        const s2 = Math.pow(obj.size/5, 2);
+        const nd = Math.abs(diff) / (totalHalf||1);
+        const afGain = nd < 0.95 ? 1.0 : Math.max(0.2, 1.0-(nd-0.95)*10);
+        const g2 = Math.pow(afGain, 2);
+        const txBoost = state.txPower || 0;
+        const rainLoss = this._rainLoss(obj.distance, state);
+        const db = 10 * Math.log10(Math.max(1e-12, (s2*g2*vf)/r4)) + txBoost - rainLoss;
+        echoes.push({
+          id: obj.id, angle: obj.angle, relAngle: diff,
+          distance: obj.distance, size: obj.size,
+          measuredSize: this.measuredSizes[obj.id],
+          strength: db, afGain,
+          isDetectable: !ambiguous && db > (-80 + (40 - effSNR)),
+          ambiguous,
+          isFocused: this.phase === 'FOCUSING' && this.targetId === obj.id,
+          rainLoss: rainLoss.toFixed(1),
+        });
+      }
+    }
+    let focusStatus = this.phase;
+    if (this.phase === 'FOCUSING' && this.focusQueue.length > 0) {
+      const cur = Math.min(this.focusQueueIndex+1, this.focusQueue.length);
+      focusStatus = `FOCUSING ${cur}/${this.focusQueue.length}`;
+    }
+    return {
+      echoes, phase: this.phase, focusStatus,
+      beamAngle: this.currentAngle,
+      effectiveBeamWidth: this.effectiveBeamWidth,
+      measuredSizes: {...this.measuredSizes},
+      confirmedTargets: this.confirmedTargets,
+      rangeResolution: rangeRes,
+      maxUnambiguousRange: rMaxPRF,
+      effectiveSNR: effSNR,
+    };
+  }
+}
+
+// ── PPI Scope drawing ─────────────────────────────────────────────────────────
+function rsDrawPPI() {
+  const canvas = document.getElementById('radar-ppi-new');
+  if (!canvas) return;
+  const W = canvas.width  = canvas.offsetWidth;
+  const H = canvas.height = canvas.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  const cx = W/2, cy = H/2;
+  const maxR = Math.min(W,H)*0.44;
+  const maxRange = rsState.maxRange || 2000;
+  const TWO_PI = Math.PI*2;
+  const deg2r = d => d*Math.PI/180;
+
+  // Radar color theme: BLUE beam
+  const BEAM_COLOR   = '#00d4ff';
+  const BEAM_GLOW    = '#0088ff';
+  const LOCK_COLOR   = '#ff6b35';
+
+  ctx.fillStyle = '#020810';
+  ctx.fillRect(0,0,W,H);
+
+  // ── Max unambiguous range ring (dashed, amber) ───────────────────────────
+  const rMaxPRF = rsData?.maxUnambiguousRange ?? Infinity;
+  if (rMaxPRF < maxRange) {
+    const prfR = (rMaxPRF / maxRange) * maxR;
+    ctx.beginPath(); ctx.arc(cx,cy,prfR,0,TWO_PI);
+    ctx.strokeStyle='rgba(255,193,7,0.4)'; ctx.lineWidth=1.5; ctx.setLineDash([6,4]); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle='rgba(255,193,7,0.6)'; ctx.font='9px Space Mono,monospace';
+    ctx.fillText('PRF limit', cx+prfR*0.7+4, cy-4);
+  }
+
+  // ── Range rings ──────────────────────────────────────────────────────────
+  for (let r=1; r<=4; r++) {
+    const rad = (r/4)*maxR;
+    ctx.beginPath(); ctx.arc(cx,cy,rad,0,TWO_PI);
+    ctx.strokeStyle='rgba(0,180,255,0.10)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='rgba(0,180,255,0.40)'; ctx.font='10px Space Mono,monospace';
+    ctx.fillText(Math.round((r/4)*maxRange)+'m', cx+rad+4, cy-4);
+  }
+
+  // ── Spokes ───────────────────────────────────────────────────────────────
+  for (let a=0; a<360; a+=30) {
+    const rd=deg2r(a);
+    ctx.beginPath(); ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(rd)*maxR, cy+Math.sin(rd)*maxR);
+    ctx.strokeStyle='rgba(0,180,255,0.06)'; ctx.lineWidth=1; ctx.stroke();
+  }
+
+  const liveAngle = rsData?.beamAngle ?? 0;
+  const liveBw    = rsData?.effectiveBeamWidth ?? rsState.beamWidth ?? 20;
+  const beamRad   = deg2r(liveAngle);
+  const halfBeam  = deg2r(Math.max(1,liveBw)/2);
+  const isFocusing= rsData?.phase === 'FOCUSING';
+
+  // ── Beam wedge (BLUE) ────────────────────────────────────────────────────
+  const grad = ctx.createRadialGradient(cx,cy,0,cx,cy,maxR);
+  if (isFocusing) {
+    grad.addColorStop(0,   'rgba(255,107,53,0.7)');
+    grad.addColorStop(0.7, 'rgba(255,107,53,0.2)');
+    grad.addColorStop(1,   'rgba(255,107,53,0.0)');
+  } else {
+    grad.addColorStop(0,   'rgba(0,212,255,0.65)');
+    grad.addColorStop(0.6, 'rgba(0,136,255,0.28)');
+    grad.addColorStop(1,   'rgba(0,100,255,0.0)');
+  }
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.arc(cx,cy,maxR,beamRad-halfBeam,beamRad+halfBeam);
+  ctx.lineTo(cx,cy); ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+
+  // ── Wedge edges ──────────────────────────────────────────────────────────
+  ctx.beginPath();
+  ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(beamRad-halfBeam)*maxR, cy+Math.sin(beamRad-halfBeam)*maxR);
+  ctx.moveTo(cx,cy); ctx.lineTo(cx+Math.cos(beamRad+halfBeam)*maxR, cy+Math.sin(beamRad+halfBeam)*maxR);
+  ctx.arc(cx,cy,maxR,beamRad-halfBeam,beamRad+halfBeam);
+  ctx.strokeStyle = isFocusing ? LOCK_COLOR : `rgba(0,212,255,0.55)`;
+  ctx.lineWidth   = isFocusing ? 2 : 1; ctx.stroke();
+
+  // ── Leading edge glow ────────────────────────────────────────────────────
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(beamRad+halfBeam)*maxR, cy+Math.sin(beamRad+halfBeam)*maxR);
+  ctx.strokeStyle  = isFocusing ? LOCK_COLOR : BEAM_COLOR;
+  ctx.lineWidth    = 2.5;
+  ctx.shadowColor  = isFocusing ? LOCK_COLOR : BEAM_GLOW;
+  ctx.shadowBlur   = 14; ctx.stroke(); ctx.shadowBlur = 0;
+
+  // ── Center beam axis line ─────────────────────────────────────────────────
+  ctx.beginPath(); ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+Math.cos(beamRad)*maxR*0.9, cy+Math.sin(beamRad)*maxR*0.9);
+  ctx.strokeStyle = isFocusing ? LOCK_COLOR : 'rgba(0,212,255,0.25)';
+  ctx.lineWidth=1; ctx.setLineDash([3,6]); ctx.stroke(); ctx.setLineDash([]);
+
+  if (isFocusing) {
+    ctx.fillStyle=LOCK_COLOR; ctx.font='bold 11px Space Mono,monospace'; ctx.textAlign='center';
+    ctx.fillText('⬡ LOCKED', cx+Math.cos(beamRad)*(maxR+22), cy+Math.sin(beamRad)*(maxR+22));
+    ctx.textAlign='left';
+  }
+
+  // ── Range resolution arc (small arc at tip of beam) ──────────────────────
+  const rangeRes = rsData?.rangeResolution ?? 150;
+  const resR1 = maxR * 0.88;
+  const resR2 = resR1 + Math.max(2, (rangeRes / maxRange) * maxR * 3);
+  ctx.beginPath(); ctx.arc(cx,cy,resR2,beamRad-halfBeam*0.5,beamRad+halfBeam*0.5);
+  ctx.strokeStyle='rgba(0,212,255,0.4)'; ctx.lineWidth=2; ctx.stroke();
+
+  // ── Objects ───────────────────────────────────────────────────────────────
+  const echoes = rsData?.echoes || [];
+  const detectedIds = new Set(echoes.filter(e=>e.isDetectable).map(e=>e.id));
+  for (const obj of (rsState.objects||[])) {
+    const distPx = (obj.distance/maxRange)*maxR;
+    const ang    = deg2r(obj.angle);
+    const ox     = cx + Math.cos(ang)*distPx;
+    const oy     = cy + Math.sin(ang)*distPx;
+    const sizePx = Math.max(5, obj.size*2.5);
+    const detected  = detectedIds.has(obj.id);
+    const echoData  = echoes.find(e=>e.id===obj.id);
+    const oor       = obj.distance > maxRange;
+    const ambiguous = echoData?.ambiguous;
+    const dragging  = rsDragRef?.id === obj.id;
+
+    // Pulse ring on detection
+    if (detected) {
+      ctx.beginPath(); ctx.arc(ox,oy,sizePx+10,0,TWO_PI);
+      ctx.strokeStyle='rgba(0,212,255,0.6)'; ctx.lineWidth=1.5;
+      ctx.shadowColor=BEAM_COLOR; ctx.shadowBlur=18; ctx.stroke(); ctx.shadowBlur=0;
+    }
+    if (ambiguous) {
+      ctx.beginPath(); ctx.arc(ox,oy,sizePx+14,0,TWO_PI);
+      ctx.strokeStyle='rgba(255,193,7,0.5)'; ctx.lineWidth=1; ctx.setLineDash([3,3]); ctx.stroke(); ctx.setLineDash([]);
+    }
+    if (dragging) {
+      ctx.beginPath(); ctx.arc(ox,oy,sizePx+16,0,TWO_PI);
+      ctx.strokeStyle='rgba(255,196,0,0.8)'; ctx.lineWidth=2;
+      ctx.shadowColor='#ffc400'; ctx.shadowBlur=16; ctx.stroke(); ctx.shadowBlur=0;
+    }
+
+    // Target body
+    ctx.beginPath(); ctx.arc(ox,oy,sizePx,0,TWO_PI);
+    ctx.fillStyle   = dragging   ? 'rgba(255,196,0,0.25)'
+                    : detected   ? 'rgba(0,212,255,0.3)'
+                    : ambiguous  ? 'rgba(255,193,7,0.15)'
+                    : oor        ? 'rgba(50,60,80,0.15)'
+                    :              'rgba(80,110,160,0.22)';
+    ctx.strokeStyle = dragging   ? '#ffc400'
+                    : detected   ? BEAM_COLOR
+                    : ambiguous  ? '#ffc107'
+                    : oor        ? 'rgba(0,180,255,0.10)'
+                    :              'rgba(0,180,255,0.28)';
+    ctx.lineWidth=1.5; ctx.fill(); ctx.stroke();
+
+    // Label
+    const labelColor = dragging ? '#ffc400' : detected ? BEAM_COLOR : ambiguous ? '#ffc107' : oor ? 'rgba(150,170,200,0.3)' : 'rgba(150,180,220,0.55)';
+    ctx.fillStyle = labelColor; ctx.font='10px Space Mono,monospace';
+    const suffix = oor ? ' OOR' : ambiguous ? ' AMB' : '';
+    ctx.fillText('T'+obj.id+suffix, ox+sizePx+5, oy+4);
+
+    if (detected && !dragging && echoData) {
+      ctx.fillStyle='rgba(0,212,255,0.75)'; ctx.font='9px Space Mono,monospace';
+      ctx.fillText(Math.round(echoData.strength)+'dB', ox+sizePx+5, oy+15);
+      if (echoData.rainLoss && parseFloat(echoData.rainLoss) > 0.5) {
+        ctx.fillStyle='rgba(100,180,255,0.5)'; ctx.font='8px Space Mono,monospace';
+        ctx.fillText('−'+echoData.rainLoss+'dB rain', ox+sizePx+5, oy+25);
+      }
+    }
+    if (dragging) { ctx.fillStyle='#ffc400'; ctx.font='9px Space Mono,monospace'; ctx.fillText(Math.round(obj.angle)+'° / '+Math.round(obj.distance)+'m', ox+sizePx+5, oy+15); }
+  }
+
+  // ── Center dot ────────────────────────────────────────────────────────────
+  ctx.beginPath(); ctx.arc(cx,cy,5,0,TWO_PI);
+  ctx.fillStyle=BEAM_COLOR; ctx.shadowColor=BEAM_GLOW; ctx.shadowBlur=18; ctx.fill(); ctx.shadowBlur=0;
+
+  // ── Compass ───────────────────────────────────────────────────────────────
+  ctx.fillStyle='rgba(0,180,255,0.45)'; ctx.font='bold 10px Space Mono,monospace';
+  ctx.textAlign='center';
+  ctx.fillText('N', cx,          cy-maxR-8);
+  ctx.fillText('S', cx,          cy+maxR+16);
+  ctx.fillText('E', cx+maxR+14,  cy+4);
+  ctx.fillText('W', cx-maxR-14,  cy+4);
+  ctx.textAlign='left';
+
+  // ── Outer ring ────────────────────────────────────────────────────────────
+  ctx.beginPath(); ctx.arc(cx,cy,maxR,0,TWO_PI);
+  ctx.strokeStyle='rgba(0,180,255,0.22)'; ctx.lineWidth=1; ctx.stroke();
+
+  // ── Bottom hint ───────────────────────────────────────────────────────────
+  ctx.fillStyle='rgba(0,180,255,0.22)'; ctx.font='9px Space Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText('Drag to move · Scroll to resize · Right-click to delete · Click empty to add', cx, H-8);
+  ctx.textAlign='left';
+}
+
+// ── Signal History drawing ────────────────────────────────────────────────────
+function rsDrawSignalHistory() {
+  const canvas = document.getElementById('radar-signal-history');
+  if (!canvas) return;
+  const W = canvas.width  = canvas.offsetWidth;
+  const H = canvas.height = canvas.offsetHeight;
+  const ctx = canvas.getContext('2d');
+  const now = performance.now();
+  const snrDb = rsData?.effectiveSNR ?? rsState.snr ?? 20;
+  const noiseFloorDb = -80;
+  const detectionThreshold = noiseFloorDb + (40 - snrDb);
+  const jitter = (Math.random()-0.5)*2.5;
+  let currentPowerDb = noiseFloorDb + jitter;
+  let strongestId = null;
+  const echoes = rsData?.echoes || [];
+  if (echoes.length > 0) {
+    let totalLinear = Math.pow(10, currentPowerDb/10);
+    let maxStr = -999;
+    for (const e of echoes) {
+      totalLinear += Math.pow(10, e.strength/10);
+      if (e.strength > maxStr) { maxStr=e.strength; strongestId=e.id; }
+    }
+    currentPowerDb = 10*Math.log10(totalLinear);
+  }
+  rsSignalHistory.push({ time:now, power:currentPowerDb, phase:rsData?.phase||'SCANNING', bodyId:strongestId });
+  rsSignalHistory = rsSignalHistory.filter(e => now-e.time < RS_MAX_TIME_MS);
+
+  ctx.fillStyle='#020a05'; ctx.fillRect(0,0,W,H);
+  const padL=45,padR=15,padT=20,padB=25;
+  const plotW=W-padL-padR, plotH=H-padT-padB;
+  const minDb=-100, maxDb=20;
+
+  ctx.strokeStyle='rgba(0,180,255,0.1)'; ctx.lineWidth=1; ctx.setLineDash([2,4]);
+  for (let db=minDb; db<=maxDb; db+=20) {
+    const y = padT+plotH-((db-minDb)/(maxDb-minDb))*plotH;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(padL+plotW,y); ctx.stroke();
+    ctx.fillStyle='rgba(0,180,255,0.45)'; ctx.font='9px Space Mono,monospace'; ctx.textAlign='right';
+    ctx.fillText(db+'dB', padL-6, y+3);
+  }
+  ctx.setLineDash([]);
+
+  const noiseY = padT+plotH-((noiseFloorDb-minDb)/(maxDb-minDb))*plotH;
+  ctx.strokeStyle='rgba(255,255,255,0.15)'; ctx.beginPath(); ctx.moveTo(padL,noiseY); ctx.lineTo(padL+plotW,noiseY); ctx.stroke();
+
+  const threshY = padT+plotH-((detectionThreshold-minDb)/(maxDb-minDb))*plotH;
+  ctx.strokeStyle='rgba(255,100,100,0.45)'; ctx.lineWidth=1; ctx.setLineDash([5,5]);
+  ctx.beginPath(); ctx.moveTo(padL,threshY); ctx.lineTo(padL+plotW,threshY); ctx.stroke();
+  ctx.setLineDash([]); ctx.fillStyle='rgba(255,100,100,0.6)'; ctx.textAlign='right';
+  ctx.fillText('THRESHOLD', padL+plotW, threshY-4);
+
+  if (rsSignalHistory.length > 1) {
+    const drawSeg = (seg, phase) => {
+      if (seg.length<2) return;
+      ctx.beginPath();
+      for (let i=0;i<seg.length;i++) {
+        const e=seg[i];
+        const x=padL+plotW-((now-e.time)/RS_MAX_TIME_MS)*plotW;
+        const y=padT+plotH-((e.power-minDb)/(maxDb-minDb))*plotH;
+        i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+      }
+      ctx.strokeStyle = phase==='FOCUSING' ? '#ff9500' : '#00d4ff';
+      ctx.lineWidth=1.5; ctx.shadowColor=ctx.strokeStyle; ctx.shadowBlur=4;
+      ctx.stroke(); ctx.shadowBlur=0;
+    };
+    let seg=[], curPhase=rsSignalHistory[0].phase;
+    for (const e of rsSignalHistory) {
+      if (e.phase!==curPhase) { drawSeg(seg,curPhase); seg=[e]; curPhase=e.phase; }
+      else seg.push(e);
+    }
+    drawSeg(seg,curPhase);
+
+    // Cluster peak labels
+    const clusters=[]; let active=null;
+    for (const e of rsSignalHistory) {
+      if (e.power>detectionThreshold && e.bodyId) {
+        if (!active || active.bodyId!==e.bodyId) { if(active)clusters.push(active); active={bodyId:e.bodyId,peak:e}; }
+        else if (e.power>active.peak.power) active.peak=e;
+      } else { if(active){clusters.push(active);active=null;} }
+    }
+    if(active) clusters.push(active);
+    ctx.textAlign='center';
+    for (const cl of clusters) {
+      const e=cl.peak;
+      const x=padL+plotW-((now-e.time)/RS_MAX_TIME_MS)*plotW;
+      const y=padT+plotH-((e.power-minDb)/(maxDb-minDb))*plotH;
+      ctx.fillStyle=e.phase==='FOCUSING'?'rgba(255,149,0,0.9)':'rgba(0,212,255,0.9)';
+      ctx.font='bold 10px Space Mono,monospace';
+      ctx.fillText('T'+e.bodyId, x, y-10);
+    }
+
+    // Fill area
+    ctx.beginPath();
+    for (let i=0;i<rsSignalHistory.length;i++) {
+      const e=rsSignalHistory[i];
+      const x=padL+plotW-((now-e.time)/RS_MAX_TIME_MS)*plotW;
+      const y=padT+plotH-((e.power-minDb)/(maxDb-minDb))*plotH;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    const last=rsSignalHistory[rsSignalHistory.length-1];
+    const first=rsSignalHistory[0];
+    ctx.lineTo(padL+plotW-((now-last.time)/RS_MAX_TIME_MS)*plotW, padT+plotH);
+    ctx.lineTo(padL+plotW-((now-first.time)/RS_MAX_TIME_MS)*plotW, padT+plotH);
+    ctx.closePath();
+    const areaGrad=ctx.createLinearGradient(0,padT,0,padT+plotH);
+    areaGrad.addColorStop(0,'rgba(0,180,255,0.12)'); areaGrad.addColorStop(1,'rgba(0,100,255,0.0)');
+    ctx.fillStyle=areaGrad; ctx.fill();
+  }
+
+  ctx.fillStyle='rgba(0,180,255,0.6)'; ctx.font='9px Space Mono,monospace'; ctx.textAlign='center';
+  ctx.fillText('SIGNAL STRENGTH OVER TIME (8s WINDOW)', padL+plotW/2, H-6);
+  if (rsData?.phase==='FOCUSING') {
+    ctx.fillStyle='#ff6b35'; ctx.textAlign='left';
+    ctx.fillText('◈ BEAM LOCKED — GAIN MAXIMIZED', padL+10, padT+12);
+  }
+  ctx.textAlign='left';
+}
+
+// ── UI updaters ───────────────────────────────────────────────────────────────
+function rsUpdateStatusPanel() {
+  if (!rsData) return;
+  const phase = rsData.focusStatus || rsData.phase;
+  const badge = document.getElementById('rs-phase-badge');
+  if (badge) {
+    badge.textContent = phase;
+    badge.style.background = rsData.phase==='FOCUSING' ? 'rgba(255,107,53,0.15)' : 'rgba(0,180,255,0.10)';
+    badge.style.borderColor= rsData.phase==='FOCUSING' ? '#ff6b35' : 'rgba(0,180,255,0.4)';
+    badge.style.color      = rsData.phase==='FOCUSING' ? '#ff6b35' : '#00d4ff';
+  }
+  const elAngle = document.getElementById('rs-angle');
+  if (elAngle) elAngle.textContent = (rsData.beamAngle||0).toFixed(1)+'°';
+  const elBw = document.getElementById('rs-bwidth');
+  if (elBw) elBw.textContent = (rsData.effectiveBeamWidth||rsState.beamWidth)+'°';
+  const echoes = rsData.echoes||[];
+  const det = echoes.filter(e=>e.isDetectable);
+  const elE = document.getElementById('rs-echoes');
+  if (elE) elE.textContent = det.length ? det.map(e=>'T'+e.id+' '+Math.round(e.strength)+'dB').join(', ') : '—';
+
+  // Confirmed targets
+  const el = document.getElementById('rs-confirmed');
+  if (el) {
+    if (!rsSimulator || rsSimulator.confirmedTargets.size===0) { el.textContent='—'; }
+    else {
+      el.innerHTML = Array.from(rsSimulator.confirmedTargets.entries()).map(([id,c])=>
+        `<span style="color:#00d4ff">T${id}</span> ${Math.round(c.angle)}° / ${Math.round(c.distance)}m`
+      ).join('<br>');
+    }
+  }
+
+  // Physics readouts
+  const effSNR = rsData.effectiveSNR ?? rsState.snr;
+  const rangeRes = rsData.rangeResolution ?? 150;
+  const prfMax = rsData.maxUnambiguousRange ?? 99999;
+  const set2 = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  set2('rs-eff-snr', effSNR.toFixed(1)+' dB');
+  set2('rs-range-res', rangeRes > 1000 ? (rangeRes/1000).toFixed(1)+'km' : Math.round(rangeRes)+'m');
+  set2('rs-prf-max', prfMax > 9000 ? '>'+Math.round(prfMax/1000)+'km' : Math.round(prfMax)+'m');
+
+  // Beam metrics
+  const bw = rsState.beamWidth;
+  const freq = rsState.frequency || 9.5;
+  const lambda = 0.3 / freq;                               // wavelength in metres (c/f_GHz)
+  const hpbw = bw.toFixed(1)+'°';
+  const sll  = (-13.5 - Math.log2(Math.max(1,bw/5))*3).toFixed(1);
+  const eirp = ((rsState.txPower||0) + 30 - bw/10).toFixed(1);
+  const dir  = (10*Math.log10(Math.max(1,50/bw))).toFixed(1);
+  set2('rs-hpbw', hpbw); set2('rs-sll', sll+' dB'); set2('rs-eirp', eirp+' dB'); set2('rs-dir', dir+' dB');
+}
+
+function rsRenderTargetList() {
+  const objs = rsState.objects || [];
+  const el = document.getElementById('rs-target-list');
+  const ct = document.getElementById('rs-tgt-count');
+  if (!el) return;
+  if (ct) ct.textContent = '('+objs.length+'/5)';
+  if (!objs.length) { el.innerHTML='<div class="section-note">No targets placed</div>'; return; }
+  el.innerHTML = objs.map(obj => `
+    <div style="background:rgba(0,255,136,0.04);border:1px solid rgba(0,255,136,0.18);padding:8px;margin-bottom:6px;border-radius:5px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+        <span style="color:#00ff88;font-size:11px;font-family:Space Mono,monospace;font-weight:700">T${obj.id}</span>
+        <button onclick="rsRemoveTarget(${obj.id})" style="background:transparent;border:none;color:#f55;cursor:pointer;font-size:13px">×</button>
+      </div>
+      ${[['Ang','angle',0,360,'°',1],['Dist','distance',10,2000,'m',5],['Size','size',1,20,'',1]].map(([label,field,min,max,unit,step])=>`
+      <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+        <span style="font-size:9px;color:var(--text3);width:28px;text-align:right;font-family:Space Mono,monospace">${label}</span>
+        <input type="range" style="flex:1;margin:0" min="${min}" max="${max}" step="${step}" value="${obj[field]}"
+          oninput="rsUpdateTargetField(${obj.id},'${field}',+this.value)" />
+        <span style="font-size:9px;color:var(--cyan);width:36px;font-family:Space Mono,monospace">${obj[field]}${unit}</span>
+      </div>`).join('')}
+    </div>`).join('');
+}
+
+// ── Param helpers ─────────────────────────────────────────────────────────────
+function rsSetParam(key, val, dispId, fmt) {
+  rsState[key] = val;
+  const el = document.getElementById(dispId);
+  if (el) el.textContent = fmt(val);
+}
+// Reset a single parameter back to its default value
+function rsResetParam(key, defaultVal, dispId, fmt, sliderId, extraFn) {
+  rsState[key] = defaultVal;
+  const disp = document.getElementById(dispId);
+  if (disp) disp.textContent = fmt(defaultVal);
+  const slider = document.getElementById(sliderId);
+  if (slider) slider.value = defaultVal;
+  // also sync any secondary display (e.g. rs-bwidth on the status panel)
+  if (key === 'beamWidth') {
+    const bw = document.getElementById('rs-bwidth');
+    if (bw) bw.textContent = defaultVal + '°';
+  }
+  if (extraFn) extraFn();
+  toast(key + ' reset to default', '#00d4ff');
+}
+function rsTogglePause() {
+  rsState.isPaused = !rsState.isPaused;
+  const btn = document.getElementById('rs-pause-btn');
+  if (btn) {
+    btn.textContent = rsState.isPaused ? '▶ RESUME SCANNING' : 'Ⅱ PAUSE SCANNING';
+    btn.style.background   = rsState.isPaused ? 'rgba(255,150,0,0.15)' : 'rgba(0,180,255,0.1)';
+    btn.style.borderColor  = rsState.isPaused ? '#ff9600' : '#00d4ff';
+    btn.style.color        = rsState.isPaused ? '#ff9600' : '#00d4ff';
+  }
+}
+function rsAddTarget() {
+  const objs = rsState.objects || [];
+  if (objs.length >= 5) { toast('Max 5 targets','var(--amber)'); return; }
+  const nextId = objs.length ? Math.max(...objs.map(o=>o.id))+1 : 1;
+  rsState.objects = [...objs, { id:nextId, angle:Math.round(Math.random()*360), distance:Math.round(100+Math.random()*800), size:Math.round(4+Math.random()*8) }];
+  rsRenderTargetList();
+}
+function rsRemoveTarget(id) {
+  rsState.objects = (rsState.objects||[]).filter(o=>o.id!==id);
+  if (rsSimulator) { rsSimulator.confirmedTargets.delete(id); delete rsSimulator.measuredSizes[id]; }
+  rsRenderTargetList();
+}
+function rsUpdateTargetField(id, field, val) {
+  rsState.objects = (rsState.objects||[]).map(o=>o.id===id?{...o,[field]:val}:o);
+  if (rsSimulator) { rsSimulator.confirmedTargets.delete(id); }
+  rsRenderTargetList();
+}
+function rsReset() {
+  rsState = JSON.parse(JSON.stringify(RS_DEFAULTS));
+  rsSimulator = new Radar_Simulator();
+  rsSignalHistory = [];
+  const sync=(id,val)=>{const e=document.getElementById(id);if(e)e.value=val;};
+  const syncT=(id,val)=>{const e=document.getElementById(id);if(e)e.textContent=val;};
+  sync('rs-bw-slider', rsState.beamWidth);   syncT('rs-bw-val', rsState.beamWidth+'°');  syncT('rs-bwidth', rsState.beamWidth+'°');
+  sync('rs-spd-slider', rsState.scanSpeed);  syncT('rs-spd-val', rsState.scanSpeed+'°/s');
+  sync('rs-maxr-slider', rsState.maxRange);  syncT('rs-maxr-val', rsState.maxRange+'m');
+  sync('rs-snr-slider', rsState.snr);        syncT('rs-snr-val', rsState.snr+' dB');
+  sync('rs-txp-slider', rsState.txPower);    syncT('rs-txp-val', '+0 dB');
+  sync('rs-clutter-slider', rsState.clutterLevel); syncT('rs-clutter-val', rsState.clutterLevel+' dBc');
+  sync('rs-freq-slider', rsState.frequency); syncT('rs-freq-val', rsState.frequency.toFixed(1)+' GHz');
+  sync('rs-pw-slider', rsState.pulseWidth);  syncT('rs-pw-val', rsState.pulseWidth.toFixed(1)+' µs');
+  sync('rs-prf-slider', rsState.prf);        syncT('rs-prf-val', rsState.prf+' Hz');
+  sync('rs-rain-slider', rsState.rainAtten); syncT('rs-rain-val', '0.0 dB/km');
+  const btn=document.getElementById('rs-pause-btn');
+  if(btn){btn.textContent='Ⅱ PAUSE SCANNING';btn.style.background='rgba(0,180,255,0.1)';btn.style.borderColor='#00d4ff';btn.style.color='#00d4ff';}
+  rsRenderTargetList();
+  toast('Radar reset to defaults','#00d4ff');
+}
+
+// ── Main animation loop ────────────────────────────────────────────────────────
+function rsStartLoop() {
+  if (rsAnimId) cancelAnimationFrame(rsAnimId);
+  rsLastTs = null;
+  const loop = (ts) => {
+    rsAnimId = requestAnimationFrame(loop);
+    if (!rsSimulator) return;
+    if (!rsLastTs) rsLastTs = ts;
+    const dt = Math.min((ts - rsLastTs) / 1000, 0.1);
+    rsLastTs = ts;
+    if (!rsState.isPaused) {
+      rsData = rsSimulator.tick(dt, rsState);
+    }
+    rsDrawPPI();
+    rsDrawSignalHistory();
+    rsUpdateStatusPanel();
+  };
+  rsAnimId = requestAnimationFrame(loop);
+}
+function rsStopLoop() {
+  if (rsAnimId) { cancelAnimationFrame(rsAnimId); rsAnimId = null; }
+  rsLastTs = null;
+}
+
+// ── Drag + scroll + right-click + click-to-add + tooltip ─────────────────────
+function rsInitDrag() {
+  const canvas = document.getElementById('radar-ppi-new');
+  if (!canvas || canvas._rsDragInit) return;
+  canvas._rsDragInit = true;
+  const maxRangeFn = () => rsState.maxRange || 2000;
+
+  const getGeom = () => {
+    const W=canvas.offsetWidth, H=canvas.offsetHeight;
+    return { cx:W/2, cy:H/2, maxR:Math.min(W,H)*0.44, W, H };
+  };
+  const canvasToRadar = (mx,my) => {
+    const {cx,cy,maxR}=getGeom();
+    const dx=mx-cx, dy=my-cy;
+    const angle=((Math.atan2(dy,dx)*180/Math.PI)+360)%360;
+    const distance=Math.round((Math.sqrt(dx*dx+dy*dy)/maxR)*maxRangeFn());
+    return { angle:Math.round(angle), distance:Math.max(10,distance) };
+  };
+  const hitTest = (mx,my) => {
+    const {cx,cy,maxR}=getGeom();
+    const mr=maxRangeFn();
+    for (const obj of (rsState.objects||[])) {
+      const dp=(obj.distance/mr)*maxR;
+      const ang=obj.angle*Math.PI/180;
+      const ox=cx+Math.cos(ang)*dp, oy=cy+Math.sin(ang)*dp;
+      const sp=Math.max(5,obj.size*2.5);
+      if (Math.hypot(mx-ox,my-oy)<=sp+12) return obj.id;
+    }
+    return null;
+  };
+
+  // ── Tooltip ────────────────────────────────────────────────────────────────
+  let tooltipEl = document.getElementById('rs-ppi-tooltip');
+  if (!tooltipEl) {
+    tooltipEl = document.createElement('div');
+    tooltipEl.id = 'rs-ppi-tooltip';
+    tooltipEl.style.cssText='position:fixed;display:none;pointer-events:none;background:rgba(5,15,35,0.92);border:1px solid rgba(0,180,255,0.4);border-radius:5px;padding:5px 9px;font-family:Space Mono,monospace;font-size:9px;color:#00d4ff;line-height:1.7;z-index:999;';
+    document.body.appendChild(tooltipEl);
+  }
+  const showTooltip = (obj, echoData, clientX, clientY) => {
+    const lines = [
+      `<b>T${obj.id}</b>`,
+      `Angle: ${Math.round(obj.angle)}°`,
+      `Dist:  ${Math.round(obj.distance)}m`,
+      `Size:  ${obj.size}m`,
+    ];
+    if (echoData) {
+      lines.push(`Signal: ${Math.round(echoData.strength)} dB`);
+      if (echoData.ambiguous) lines.push(`<span style="color:#ffc107">⚠ RANGE AMBIGUOUS</span>`);
+      if (echoData.rainLoss && parseFloat(echoData.rainLoss)>0.1) lines.push(`Rain loss: −${echoData.rainLoss} dB`);
+    }
+    lines.push(`<span style="color:rgba(0,180,255,0.5)">Scroll=resize · RClick=del</span>`);
+    tooltipEl.innerHTML = lines.join('<br>');
+    tooltipEl.style.display='block';
+    tooltipEl.style.left = (clientX+14)+'px';
+    tooltipEl.style.top  = (clientY-10)+'px';
+  };
+  const hideTooltip = () => { tooltipEl.style.display='none'; };
+
+  // ── mousedown: start drag ──────────────────────────────────────────────────
+  canvas.addEventListener('mousedown', e => {
+    if (e.button !== 0) return;
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const id=hitTest(mx,my);
+    if (id!=null) {
+      rsDragRef={id};
+      canvas.style.cursor='grabbing';
+      hideTooltip();
+      e.preventDefault();
+    }
+  });
+
+  // ── mousemove: drag or hover ───────────────────────────────────────────────
+  canvas.addEventListener('mousemove', e => {
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    if (rsDragRef) {
+      const {angle,distance}=canvasToRadar(mx,my);
+      rsState.objects=(rsState.objects||[]).map(o=>o.id===rsDragRef.id?{...o,angle,distance}:o);
+      if (rsSimulator) rsSimulator.confirmedTargets.delete(rsDragRef.id);
+      canvas.style.cursor='grabbing';
+      return;
+    }
+    const hovId=hitTest(mx,my);
+    if (hovId!=null) {
+      canvas.style.cursor='grab';
+      const obj=(rsState.objects||[]).find(o=>o.id===hovId);
+      const echoData=(rsData?.echoes||[]).find(e=>e.id===hovId);
+      if (obj) showTooltip(obj, echoData, e.clientX, e.clientY);
+    } else {
+      canvas.style.cursor='crosshair';
+      hideTooltip();
+    }
+  });
+
+  // ── mouseup: end drag ──────────────────────────────────────────────────────
+  const up=()=>{ rsDragRef=null; hideTooltip(); };
+  canvas.addEventListener('mouseup',up);
+  window.addEventListener('mouseup',up);
+
+  // ── mouseleave ────────────────────────────────────────────────────────────
+  canvas.addEventListener('mouseleave',()=>{ hideTooltip(); });
+
+  // ── Scroll wheel: resize hovered target ────────────────────────────────────
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const id=hitTest(mx,my);
+    if (id==null) return;
+    const delta = e.deltaY > 0 ? -1 : 1;
+    rsState.objects=(rsState.objects||[]).map(o=>{
+      if (o.id!==id) return o;
+      const newSize=Math.max(1,Math.min(20,o.size+delta));
+      return {...o, size:newSize};
+    });
+    if (rsSimulator) rsSimulator.confirmedTargets.delete(id);
+    rsRenderTargetList();
+  },{passive:false});
+
+  // ── Right-click: delete target ─────────────────────────────────────────────
+  canvas.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    const id=hitTest(mx,my);
+    if (id!=null) {
+      rsRemoveTarget(id);
+      hideTooltip();
+      toast('Target T'+id+' removed','#f55');
+    }
+  });
+
+  // ── Click empty space: add target ─────────────────────────────────────────
+  canvas.addEventListener('click', e => {
+    if (e.button!==0) return;
+    const r=canvas.getBoundingClientRect();
+    const mx=e.clientX-r.left, my=e.clientY-r.top;
+    if (hitTest(mx,my)!=null) return; // clicked a target, not empty
+    if (rsDragRef) return;
+    const objs = rsState.objects || [];
+    if (objs.length >= 5) { toast('Max 5 targets','var(--amber)'); return; }
+    const {angle,distance}=canvasToRadar(mx,my);
+    if (distance > (rsState.maxRange||2000)*1.1) return;
+    const nextId = objs.length ? Math.max(...objs.map(o=>o.id))+1 : 1;
+    rsState.objects=[...objs, {id:nextId, angle, distance, size:6}];
+    rsRenderTargetList();
+    toast('T'+nextId+' added at '+Math.round(angle)+'° / '+distance+'m','#00d4ff');
+  });
+}
+
+// ── loadRadarState called by switchApp ────────────────────────────────────────
+function loadRadarState() {
+  if (!rsSimulator) { rsSimulator=new Radar_Simulator(); }
+  rsInitDrag();
+  rsRenderTargetList();
+  rsStartLoop();
+}
+// Keep old names to avoid breaking switchApp / refreshApp
+function radarReset() { rsReset(); }
+function setRadarMode() {}
+function broadScan() {}
+function addBody() {}
+function deleteBody() {}
+function renderBodyList() {}
+function renderDetections() {}
+
+// ════════════════════════════════════
+// INIT
+// ════════════════════════════════════
+(async()=>{
+  const online=await checkConnection();
+  if(!online){toast('⚠ Backend offline — start FastAPI server on :8000','var(--red)');return;}
+  const p=await api('/params');
+  if(p){
+    params={...params,...p};
+    document.getElementById('ctrl-n').value=p.num_elements;document.getElementById('val-n').textContent=p.num_elements;
+    document.getElementById('ctrl-d').value=p.element_spacing;document.getElementById('val-d').textContent=p.element_spacing.toFixed(2);
+    document.getElementById('ctrl-f').value=p.frequency_hz/1e9;document.getElementById('val-f').textContent=(p.frequency_hz/1e9).toFixed(2)+' GHz';
+    document.getElementById('ctrl-angle').value=p.steering_angle_deg;document.getElementById('val-angle').textContent=p.steering_angle_deg+'°';
+    document.getElementById('ctrl-amp').value=p.amplitude;document.getElementById('val-amp').textContent=p.amplitude.toFixed(2);
+    document.getElementById('ctrl-pw').value=p.pulse_width*1e6;document.getElementById('val-pw').textContent=(p.pulse_width*1e6).toFixed(1)+' µs';
+    document.getElementById('ctrl-sr').value=p.sampling_rate/1e9;document.getElementById('val-sr').textContent=(p.sampling_rate/1e9).toFixed(0)+' GHz';
+    if(p.snr_db!=null){document.getElementById('snr-slider').value=p.snr_db;document.getElementById('snr-display').textContent=p.snr_db+' dB';document.getElementById('m-snr').textContent=p.snr_db;}
+  }
+  await refreshCore();
+  toast('BeamForge online ✓','var(--green)');
+})();
+</script>
+</body>
+</html>
